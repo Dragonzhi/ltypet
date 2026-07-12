@@ -16,6 +16,8 @@ body,
 .pet-shell {
   --eye-x: 0px;
   --eye-y: 0px;
+  /* 以脚底为固定点的呼吸幅度；1.003 约等于头顶起伏 1px。 */
+  --breath-scale-y: 1.01;
   /* 招手时允许手臂像纸片关节一样与身体分离，优先调整这两个值。 */
   --wave-out-x: 2px;
   --wave-lift-y: -0.4px;
@@ -49,9 +51,9 @@ body,
 }
 
 .pet-breathe {
-  transform-box: view-box;
+  transform-box: fill-box;
   transform-origin: center bottom;
-  animation: pet-breathe 3.2s ease-in-out infinite;
+  animation: pet-breathe 3.6s ease-in-out infinite;
 }
 
 .pet-shell:not(.is-sleeping) #hair-tail-left,
@@ -131,10 +133,11 @@ body,
 @keyframes pet-breathe {
   0%,
   100% {
-    transform: translateY(0) scaleY(1);
+    transform: scaleY(1);
   }
-  50% {
-    transform: translateY(-2px) scaleY(1.006);
+  45%,
+  55% {
+    transform: scaleY(var(--breath-scale-y));
   }
 }
 
