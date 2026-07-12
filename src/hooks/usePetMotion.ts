@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import { PET_ANIMATION_CONFIG } from "../config/petAnimation";
 
 type PetElementRef = RefObject<HTMLDivElement | null>;
@@ -9,7 +11,15 @@ const clamp = (value: number, min: number, max: number) =>
 const px = (value: number) => `${value.toFixed(2)}px`;
 const deg = (value: number) => `${value.toFixed(2)}deg`;
 
-export const usePointerFollow = (petElement: PetElementRef) => {
+export const usePointerFollow = (
+  petElement: PetElementRef,
+  mode: "local" | "global" = "local",
+) => {
+  // 全局模式下需要跟踪窗口位置，用于屏幕坐标 → 视口坐标转换
+  const winPosRef = useRef({ x: 0, y: 0 });
+  const petElementRef = useRef(petElement);
+  petElementRef.current = petElement;
+
   useEffect(() => {
     const config = PET_ANIMATION_CONFIG.pointerFollow;
     let animationFrame: number | undefined;
@@ -18,19 +28,28 @@ export const usePointerFollow = (petElement: PetElementRef) => {
 
     const updatePosition = () => {
       animationFrame = undefined;
-      const pet = petElement.current;
+      const pet = petElementRef.current.current;
       if (!pet) return;
+
+      let localX = pointerX;
+      let localY = pointerY;
+
+      // 全局模式下，屏幕坐标 → 视口坐标
+      if (mode === "global") {
+        localX = pointerX - winPosRef.current.x;
+        localY = pointerY - winPosRef.current.y;
+      }
 
       const bounds = pet.getBoundingClientRect();
       const centerX = bounds.left + bounds.width / 2;
       const centerY = bounds.top + bounds.height * 0.34;
       const directionX = clamp(
-        (pointerX - centerX) / config.fullRangeX,
+        (localX - centerX) / config.fullRangeX,
         -1,
         1,
       );
       const directionY = clamp(
-        (pointerY - centerY) / config.fullRangeY,
+        (localY - centerY) / config.fullRangeY,
         -1,
         1,
       );
@@ -63,6 +82,41 @@ export const usePointerFollow = (petElement: PetElementRef) => {
       );
     };
 
+    if (mode === "global") {
+      // 全局模式：监听 Tauri 事件（屏幕绝对坐标）
+      const win = getCurrentWindow();
+
+      // 初始获取窗口位置
+      win.outerPosition().then((pos) => {
+        winPosRef.current = { x: pos.x, y: pos.y };
+      });
+      // 窗口移动时更新
+      let unlistenMove: () => void;
+      win.onMoved((event) => {
+        winPosRef.current = { x: event.payload.x, y: event.payload.y };
+      }).then((fn) => { unlistenMove = fn; });
+
+      const unlistenEvent = listen<{ x: number; y: number }>(
+        "global-cursor-move",
+        (event) => {
+          pointerX = event.payload.x;
+          pointerY = event.payload.y;
+          if (animationFrame === undefined) {
+            animationFrame = window.requestAnimationFrame(updatePosition);
+          }
+        },
+      );
+
+      return () => {
+        unlistenEvent.then((fn) => fn());
+        if (unlistenMove) unlistenMove();
+        if (animationFrame !== undefined) {
+          window.cancelAnimationFrame(animationFrame);
+        }
+      };
+    }
+
+    // 本地模式：监听 pointermove（原始行为）
     const handlePointerMove = (event: PointerEvent) => {
       pointerX = event.clientX;
       pointerY = event.clientY;
@@ -82,7 +136,7 @@ export const usePointerFollow = (petElement: PetElementRef) => {
         window.cancelAnimationFrame(animationFrame);
       }
     };
-  }, [petElement]);
+  }, [petElement, mode]);
 };
 
 interface SpringAxis {

@@ -46,6 +46,7 @@ body,
   --wave-lift-y: -0.4px;
 
   position: absolute;
+  left: calc(50% - 100px);
   width: 200px;
   height: 340px;
   user-select: none;

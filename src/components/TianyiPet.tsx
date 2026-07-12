@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import TianyiArtwork, {
   type PetAction,
   type PetExpression,
 } from "./TianyiArtwork";
-import { usePointerFollow, useTailInertia } from "../hooks/usePetMotion";
+import { usePointerFollow } from "../hooks/usePetMotion";
 
 // 天依的核心动画状态
 type PetState = "idle" | "blink" | "listen" | "speak" | "sleep" | "drag";
@@ -18,16 +19,10 @@ const getExpression = (state: PetState): PetExpression => {
 const TianyiPet = () => {
   const [state, setState] = useState<PetState>("idle");
   const [action, setAction] = useState<PetAction>("none");
-  const [isDragging, setIsDragging] = useState(false);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [position, setPosition] = useState({ x: 0, y: 0 });
   const petElement = useRef<HTMLDivElement>(null);
-  const dragStart = useRef({ x: 0, y: 0 });
   const hasDragged = useRef(false);
   const restoreStateTimer = useRef<number | undefined>(undefined);
-  usePointerFollow(petElement);
-  const { startDrag, sampleDrag, release: releaseTail } =
-    useTailInertia(petElement);
+  usePointerFollow(petElement, "global");
 
   // idle 动画循环 — 随机眨眼，并在短暂动作结束后恢复原状态。
   useEffect(() => {
@@ -53,51 +48,22 @@ const TianyiPet = () => {
     [],
   );
 
-  // 当前仍是 WebView 内部拖拽；原生窗口拖拽将在窗口交互任务中实现。
-  const handleMouseDown = (event: React.MouseEvent) => {
+  const handleMouseDown = async (event: React.MouseEvent) => {
+    if (event.button !== 0) return;
     setAction("none");
-    setIsDragging(true);
     setState("drag");
     hasDragged.current = false;
-    dragStart.current = { x: event.clientX, y: event.clientY };
-    startDrag(event.clientX, event.clientY, event.timeStamp);
-    setOffset({
-      x: event.clientX - position.x,
-      y: event.clientY - position.y,
-    });
+    try {
+      await invoke("start_dragging");
+    } catch (err) {
+      console.error("拖拽失败:", err);
+    }
   };
 
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const handleMove = (event: MouseEvent) => {
-      sampleDrag(event.clientX, event.clientY, event.timeStamp);
-      if (
-        Math.hypot(
-          event.clientX - dragStart.current.x,
-          event.clientY - dragStart.current.y,
-        ) > 4
-      ) {
-        hasDragged.current = true;
-      }
-      setPosition({
-        x: event.clientX - offset.x,
-        y: event.clientY - offset.y,
-      });
-    };
-    const handleUp = () => {
-      setIsDragging(false);
-      setState("idle");
-      releaseTail();
-    };
-
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
-    };
-  }, [isDragging, offset, releaseTail, sampleDrag]);
+  const handleContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault();
+    // Context menu is handled by Tauri native menu at cursor position
+  };
 
   const triggerWave = () => {
     if (hasDragged.current) return;
@@ -134,11 +100,13 @@ const TianyiPet = () => {
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       onMouseDown={handleMouseDown}
+      onContextMenu={handleContextMenu}
       role="button"
       style={{
-        left: position.x,
-        top: position.y,
-        cursor: isDragging ? "grabbing" : "grab",
+        cursor: state === "drag" ? "grabbing" : "grab",
+        // -webkit-app-region: drag 让整个 WebView 区域可拖动；
+        // 交互元素需通过 -webkit-app-region: no-drag 排除（暂无按钮，先留占位）
+        ...({ "-webkit-app-region": "drag" } as React.CSSProperties),
       }}
       tabIndex={0}
     >
