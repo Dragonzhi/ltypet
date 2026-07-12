@@ -102,12 +102,22 @@ const TianyiArtwork = ({ expression, action }: TianyiArtworkProps) => {
     const svgNamespace = "http://www.w3.org/2000/svg";
     const motion = document.createElementNS(svgNamespace, "g");
     const foreground = document.createElementNS(svgNamespace, "g");
+    const foregroundMotion = document.createElementNS(svgNamespace, "g");
+    const foregroundArm = arm.cloneNode(true) as SVGGElement;
     motion.id = "arm-right-motion";
     foreground.id = "action-foreground";
+    foregroundMotion.id = "arm-right-foreground-motion";
+    foregroundArm.id = "arm-right-foreground";
+    foregroundArm
+      .querySelectorAll<SVGElement>("[id]")
+      .forEach((element) => element.removeAttribute("id"));
     motion.style.animation = "none";
+    foregroundMotion.style.animation = "none";
 
     originalParent.insertBefore(motion, arm);
     motion.appendChild(arm);
+    foregroundMotion.appendChild(foregroundArm);
+    foreground.appendChild(foregroundMotion);
     character.appendChild(foreground);
 
     // motion 是 character 的子节点，因此 pivot 必须换算到相同的父级坐标系。
@@ -129,8 +139,11 @@ const TianyiArtwork = ({ expression, action }: TianyiArtworkProps) => {
       const originY = ((parentPoint.y - viewBox.y) / viewBox.height) * 100;
       motion.style.transformBox = "view-box";
       motion.style.transformOrigin = `${originX}% ${originY}%`;
+      foregroundMotion.style.transformBox = "view-box";
+      foregroundMotion.style.transformOrigin = `${originX}% ${originY}%`;
     }
     motion.style.removeProperty("animation");
+    foregroundMotion.style.removeProperty("animation");
 
     armRig.current = {
       foreground,
@@ -147,23 +160,12 @@ const TianyiArtwork = ({ expression, action }: TianyiArtworkProps) => {
     };
   }, [artworkMarkup]);
 
-  useLayoutEffect(() => {
-    const rig = armRig.current;
-    if (!rig) return;
-
-    if (action === "wave") {
-      rig.foreground.appendChild(rig.motion);
-      return;
-    }
-
-    rig.originalParent.insertBefore(rig.motion, rig.originalNextSibling);
-  }, [action]);
-
   return (
     <div
       ref={artworkElement}
       aria-hidden="true"
       className={`tianyi-artwork expression-${expression}`}
+      data-action={action}
     >
       <StaticArtwork />
     </div>

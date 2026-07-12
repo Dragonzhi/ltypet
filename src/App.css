@@ -111,8 +111,21 @@ body,
   animation: pet-mouth-talk 360ms ease-in-out infinite;
 }
 
+#arm-right-foreground-motion {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .pet-shell[data-action="wave"] #arm-right-motion {
-  animation: pet-wave 1.6s ease-in-out 1;
+  animation:
+    pet-wave 1.6s ease-in-out 1,
+    pet-wave-back-layer 1.6s step-end 1;
+}
+
+.pet-shell[data-action="wave"] #arm-right-foreground-motion {
+  animation:
+    pet-wave 1.6s ease-in-out 1,
+    pet-wave-foreground-layer 1.6s step-end 1;
 }
 
 @keyframes pet-breathe {
@@ -217,6 +230,37 @@ body,
   }
 }
 
+/* 两份完全重合的手臂在水平帧切换，避免重挂载动画节点导致时间轴重启。 */
+@keyframes pet-wave-back-layer {
+  0%,
+  10.99% {
+    visibility: visible;
+  }
+  11%,
+  90.99% {
+    visibility: hidden;
+  }
+  91%,
+  100% {
+    visibility: visible;
+  }
+}
+
+@keyframes pet-wave-foreground-layer {
+  0%,
+  10.99% {
+    visibility: hidden;
+  }
+  11%,    
+  90.99% {
+    visibility: visible;
+  }  
+  91%,
+  100% {
+    visibility: hidden;
+  }
+}
+
 @keyframes pet-mouth-talk {
   0%,
   100% {
@@ -233,6 +277,7 @@ body,
   .pet-shell:not(.is-sleeping) #hair-tail-right,
   .pet-shell:not(.is-sleeping) #arm-left,
   .pet-shell:not(.is-sleeping) #arm-right-motion,
+  .pet-shell[data-action="wave"] #arm-right-foreground-motion,
   .pet-shell:not(.is-sleeping) #tie,
   .expression-speak #mouth {
     animation: none;
