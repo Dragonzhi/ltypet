@@ -1,4 +1,5 @@
 import artworkSource from "../assets/小洛宝.svg?raw";
+import { memo } from "react";
 
 export type PetExpression = "normal" | "blink" | "speak" | "sleep";
 
@@ -62,12 +63,18 @@ const prepareArtwork = () => {
 // 本地、受版本控制的 SVG 在构建时内联，以便 CSS 直接控制各动画图层。
 const artworkMarkup = prepareArtwork();
 
-const TianyiArtwork = ({ expression }: TianyiArtworkProps) => (
+// SVG DOM 必须在眨眼等表情更新时保持不变，否则持续动画会从头开始。
+const StaticArtwork = memo(() => (
   <div
-    aria-hidden="true"
-    className={`tianyi-artwork expression-${expression}`}
+    className="tianyi-svg-host"
     dangerouslySetInnerHTML={{ __html: artworkMarkup }}
   />
+));
+
+const TianyiArtwork = ({ expression }: TianyiArtworkProps) => (
+  <div aria-hidden="true" className={`tianyi-artwork expression-${expression}`}>
+    <StaticArtwork />
+  </div>
 );
 
 export default TianyiArtwork;

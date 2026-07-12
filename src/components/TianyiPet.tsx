@@ -4,6 +4,14 @@ import TianyiArtwork, { type PetExpression } from "./TianyiArtwork";
 // 天依的核心动画状态
 type PetState = "idle" | "blink" | "listen" | "speak" | "sleep" | "drag";
 
+// 视线跟随参数集中在这里调整。maxOffset 越小，眼睛移动范围越克制。
+const EYE_TRACKING_CONFIG = {
+  maxOffsetX: 0.6,
+  maxOffsetY: 0.35,
+  fullRangeX: 150,
+  fullRangeY: 120,
+} as const;
+
 const getExpression = (state: PetState): PetExpression => {
   if (state === "blink") return "blink";
   if (state === "speak") return "speak";
@@ -16,6 +24,7 @@ const TianyiPet = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const petElement = useRef<HTMLDivElement>(null);
   const restoreStateTimer = useRef<number | undefined>(undefined);
 
   // idle 动画循环 — 随机眨眼，并在短暂动作结束后恢复原状态。
@@ -41,6 +50,61 @@ const TianyiPet = () => {
     },
     [],
   );
+
+  // 视线跟随只更新 CSS 变量，避免鼠标移动时持续触发 React 重渲染。
+  useEffect(() => {
+    let animationFrame: number | undefined;
+    let pointerX = 0;
+    let pointerY = 0;
+
+    const updateEyePosition = () => {
+      animationFrame = undefined;
+      const pet = petElement.current;
+      if (!pet) return;
+
+      const bounds = pet.getBoundingClientRect();
+      const centerX = bounds.left + bounds.width / 2;
+      const centerY = bounds.top + bounds.height * 0.34;
+      const directionX = Math.max(
+        -1,
+        Math.min(1, (pointerX - centerX) / EYE_TRACKING_CONFIG.fullRangeX),
+      );
+      const directionY = Math.max(
+        -1,
+        Math.min(1, (pointerY - centerY) / EYE_TRACKING_CONFIG.fullRangeY),
+      );
+
+      pet.style.setProperty(
+        "--eye-x",
+        `${(directionX * EYE_TRACKING_CONFIG.maxOffsetX).toFixed(2)}px`,
+      );
+      pet.style.setProperty(
+        "--eye-y",
+        `${(directionY * EYE_TRACKING_CONFIG.maxOffsetY).toFixed(2)}px`,
+      );
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      pointerX = event.clientX;
+      pointerY = event.clientY;
+      if (animationFrame === undefined) {
+        animationFrame = window.requestAnimationFrame(updateEyePosition);
+      }
+    };
+
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      if (animationFrame !== undefined) {
+        window.cancelAnimationFrame(animationFrame);
+      }
+    };
+  }, [
+    EYE_TRACKING_CONFIG.maxOffsetX,
+    EYE_TRACKING_CONFIG.maxOffsetY,
+    EYE_TRACKING_CONFIG.fullRangeX,
+    EYE_TRACKING_CONFIG.fullRangeY,
+  ]);
 
   // 当前仍是 WebView 内部拖拽；原生窗口拖拽将在窗口交互任务中实现。
   const handleMouseDown = (event: React.MouseEvent) => {
@@ -76,6 +140,7 @@ const TianyiPet = () => {
 
   return (
     <div
+      ref={petElement}
       className={`pet-shell${state === "sleep" ? " is-sleeping" : ""}`}
       onMouseDown={handleMouseDown}
       style={{

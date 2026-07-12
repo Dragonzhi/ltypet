@@ -35,6 +35,7 @@
 - [x] 状态机骨架（6 种状态：idle / blink / listen / speak / sleep / drag）
 - [x] 呼吸动画（身体随正弦波上下浮动 + 手臂摆动）
 - [x] 随机眨眼（3-5 秒间隔）
+- [x] 眼睛小范围跟随鼠标、眨眼补间、手臂与领带待机微动
 - [x] 鼠标拖拽（任意位置拖放，但是窗口小，不能拖到窗口外）
 - [x] Git 初始化 + 首次提交
 - [x] `.gitignore` 覆盖 target/node_modules/dist
@@ -42,7 +43,7 @@
 
 ### 待实现（按优先级）
 - [x] SVG 角色形象细化（采用“小洛宝”Q 版极简造型）
-- [ ] 更多动画状态（听歌律动、打哈欠、伸懒腰、跟随鼠标视线）
+- [ ] 更多动画状态（听歌律动、打哈欠、伸懒腰）
 - [ ] 窗口吸附（拖到屏幕边缘吸附/贴任务栏）
 - [ ] 点击交互（单击切换表情、双击弹出菜单）
 - [ ] 粒子特效（音符飘动、星光）
@@ -69,15 +70,13 @@ D:\WorkProject\ltypet\ltypet\
 ├── src/                       # 前端（React + TS）
 │   ├── main.tsx               # React 入口
 │   ├── App.tsx                # 根组件 → 挂载 TianyiPet
-│   ├── App.css                # 全局样式（透明背景）
+│   ├── App.css                # 全局样式与 SVG 动画（透明背景）
 │   ├── vite-env.d.ts
+│   ├── assets/
+│   │   └── 小洛宝.svg         # Inkscape 可编辑的角色美术源文件
 │   └── components/
-│       └── TianyiPet.tsx      # 核心：天依 SVG 角色组件
-│           ├─ 状态机 (PetState type)
-│           ├─ 呼吸动画 (Date.now 驱动)
-│           ├─ 眨眼定时器
-│           ├─ 拖拽事件 (mousedown/move/up)
-│           └─ SVG 角色定义
+│       ├── TianyiPet.tsx      # 状态机、眨眼、视线跟随与拖拽交互
+│       └── TianyiArtwork.tsx  # 内联 SVG 并映射可动画图层
 │
 ├── src-tauri/                 # 后端（Rust + Tauri）
 │   ├── Cargo.toml             # Rust 依赖
