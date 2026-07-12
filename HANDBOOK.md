@@ -33,9 +33,10 @@
 - [x] Tauri v2 透明无边框窗口（AlwaysOnTop + skipTaskbar + 点击穿透）
 - [x] “小洛宝”分层 SVG 角色（头/身/双眼/嘴/四肢/发尾可独立动画）
 - [x] 状态机骨架（6 种状态：idle / blink / listen / speak / sleep / drag）
-- [x] 呼吸动画（身体随正弦波上下浮动 + 手臂摆动）
+- [x] 落地呼吸动画（脚底固定、身体小幅起伏 + 手臂摆动）
 - [x] 随机眨眼（3-5 秒间隔）
-- [x] 眼睛小范围跟随鼠标、眨眼补间、手臂与领带待机微动
+- [x] 分层鼠标跟随（身体/头部/五官/眉毛）、眨眼补间、手臂与领带待机微动
+- [x] 拖拽时双马尾惯性回摆、双耳长间隔随机微动
 - [x] 单击角色触发一次招手（拖拽超过阈值时不误触）
 - [x] 鼠标拖拽（任意位置拖放，但是窗口小，不能拖到窗口外）
 - [x] Git 初始化 + 首次提交
@@ -75,6 +76,10 @@ D:\WorkProject\ltypet\ltypet\
 │   ├── vite-env.d.ts
 │   ├── assets/
 │   │   └── 小洛宝.svg         # Inkscape 可编辑的角色美术源文件
+│   ├── config/
+│   │   └── petAnimation.ts     # 角色跟随、惯性与随机动画的集中参数
+│   ├── hooks/
+│   │   └── usePetMotion.ts     # 鼠标分层跟随与马尾弹簧惯性
 │   └── components/
 │       ├── TianyiPet.tsx      # 状态机、眨眼、视线跟随与拖拽交互
 │       └── TianyiArtwork.tsx  # 内联 SVG 并映射可动画图层

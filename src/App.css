@@ -16,6 +16,29 @@ body,
 .pet-shell {
   --eye-x: 0px;
   --eye-y: 0px;
+  --brow-x: 0px;
+  --brow-y: 0px;
+  --mouth-x: 0px;
+  --mouth-y: 0px;
+  --rouge-x: 0px;
+  --rouge-y: 0px;
+  --head-x: 0px;
+  --head-y: 0px;
+  --head-rotate: 0deg;
+  --body-x: 0px;
+  --body-y: 0px;
+  --body-rotate: 0deg;
+  --arm-look-x: 0px;
+  --arm-look-y: 0px;
+  --arm-look-rotate: 0deg;
+  --tail-look-x: 0px;
+  --tail-look-y: 0px;
+  --tail-look-rotate: 0deg;
+  --tail-inertia-x: 0px;
+  --tail-inertia-y: 0px;
+  --tail-left-inertia-rotate: 0deg;
+  --tail-right-inertia-rotate: 0deg;
+  --look-transition-ms: 110ms;
   /* 以脚底为固定点的呼吸幅度；1.003 约等于头顶起伏 1px。 */
   --breath-scale-y: 1.01;
   /* 招手时允许手臂像纸片关节一样与身体分离，优先调整这两个值。 */
@@ -56,10 +79,36 @@ body,
   animation: pet-breathe 3.6s ease-in-out infinite;
 }
 
+.tianyi-artwork #body {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  transform: translate(var(--body-x), var(--body-y))
+    rotate(var(--body-rotate));
+  transition: transform var(--look-transition-ms) ease-out;
+}
+
+.tianyi-artwork #head {
+  transform: translate(var(--head-x), var(--head-y))
+    rotate(var(--head-rotate));
+  transition: transform var(--look-transition-ms) ease-out;
+}
+
 .pet-shell:not(.is-sleeping) #hair-tail-left,
 .pet-shell:not(.is-sleeping) #hair-tail-right {
   transform-box: fill-box;
   transform-origin: center top;
+}
+
+.tianyi-artwork #hair-tail-left {
+  translate: calc(var(--tail-look-x) + var(--tail-inertia-x))
+    calc(var(--tail-look-y) + var(--tail-inertia-y));
+  rotate: calc(var(--tail-look-rotate) + var(--tail-left-inertia-rotate));
+}
+
+.tianyi-artwork #hair-tail-right {
+  translate: calc(var(--tail-look-x) + var(--tail-inertia-x))
+    calc(var(--tail-look-y) + var(--tail-inertia-y));
+  rotate: calc(var(--tail-look-rotate) + var(--tail-right-inertia-rotate));
 }
 
 .pet-shell:not(.is-sleeping) #hair-tail-left {
@@ -78,6 +127,28 @@ body,
   transition: transform 80ms ease-out;
 }
 
+.tianyi-artwork #eyebrow-left,
+.tianyi-artwork #eyebrow-right {
+  translate: var(--brow-x) var(--brow-y);
+  transition: translate var(--look-transition-ms) ease-out;
+}
+
+.tianyi-artwork #mouth {
+  translate: var(--mouth-x) var(--mouth-y);
+  transition: translate var(--look-transition-ms) ease-out;
+}
+
+.tianyi-artwork #rouge {
+  translate: var(--rouge-x) var(--rouge-y);
+  transition: translate var(--look-transition-ms) ease-out;
+}
+
+.tianyi-artwork #ear-left-motion,
+.tianyi-artwork #ear-right-motion {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
 .expression-blink #eye-left,
 .expression-blink #eye-right {
   transform: translate(var(--eye-x), var(--eye-y)) scaleY(0.12);
@@ -90,9 +161,20 @@ body,
 }
 
 .pet-shell:not(.is-sleeping) #arm-left,
-.pet-shell:not(.is-sleeping) #arm-right-motion {
+.pet-shell:not(.is-sleeping) #arm-right-motion,
+#arm-right-foreground-motion {
   transform-box: fill-box;
   transform-origin: 50% 12%;
+}
+
+.tianyi-artwork #arm-left-follow,
+.tianyi-artwork #arm-right-follow,
+.tianyi-artwork #arm-right-foreground-follow {
+  translate: var(--arm-look-x) var(--arm-look-y);
+  rotate: var(--arm-look-rotate);
+  transition:
+    translate var(--look-transition-ms) ease-out,
+    rotate var(--look-transition-ms) ease-out;
 }
 
 .pet-shell:not(.is-sleeping) #arm-left {
@@ -287,7 +369,16 @@ body,
   }
 
   .tianyi-artwork #eye-left,
-  .tianyi-artwork #eye-right {
+  .tianyi-artwork #eye-right,
+  .tianyi-artwork #eyebrow-left,
+  .tianyi-artwork #eyebrow-right,
+  .tianyi-artwork #mouth,
+  .tianyi-artwork #rouge,
+  .tianyi-artwork #body,
+  .tianyi-artwork #head,
+  .tianyi-artwork #arm-left-follow,
+  .tianyi-artwork #arm-right-follow,
+  .tianyi-artwork #arm-right-foreground-follow {
     transition: none;
   }
 }
