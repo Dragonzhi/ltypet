@@ -33,8 +33,6 @@ export const PET_ANIMATION_CONFIG = {
   },
   /** 基于各 SVG pivot 的头发运动。角度单位 deg，时间单位 ms。 */
   hairMotion: {
-    // 光标移动超过此屏幕距离后才视为拖动，避免普通单击被误判。
-    dragThresholdPx: 3,
     // 各部件的待机摆幅、周期与起始延迟；左右错相避免机械同步。
     idle: {
       tail: {

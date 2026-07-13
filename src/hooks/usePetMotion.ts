@@ -3,8 +3,6 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { PET_ANIMATION_CONFIG } from "../config/petAnimation";
 import {
-  distanceBetweenPoints,
-  exceedsDragThreshold,
   normalizeDragVelocity,
   scaleHairRotation,
 } from "../motion/hairMotionMath";
@@ -226,11 +224,8 @@ export const useHairMotion = (petElement: PetElementRef) => {
   const frame = useRef<number | undefined>(undefined);
   const previousFrameTime = useRef<number | undefined>(undefined);
   const latestCursor = useRef<DragSample | null>(null);
-  const dragStart = useRef<DragSample | null>(null);
   const lastDragSample = useRef<DragSample | null>(null);
   const lastWindowSample = useRef<DragSample | null>(null);
-  const windowDragStart = useRef<DragSample | null>(null);
-  const maximumDragDistance = useRef(0);
   const isDragging = useRef(false);
   const rotationAxis = useRef<SpringAxis>({
     position: 0,
@@ -341,13 +336,6 @@ export const useHairMotion = (petElement: PetElementRef) => {
       latestCursor.current = currentSample;
       if (!isDragging.current) return;
 
-      const start = dragStart.current;
-      if (start) {
-        maximumDragDistance.current = Math.max(
-          maximumDragDistance.current,
-          distanceBetweenPoints(start.x, start.y, x, y),
-        );
-      }
       const previous = lastDragSample.current;
       lastDragSample.current = currentSample;
       if (!previous) return;
@@ -363,13 +351,6 @@ export const useHairMotion = (petElement: PetElementRef) => {
       const previous = lastWindowSample.current;
       lastWindowSample.current = currentSample;
 
-      const start = windowDragStart.current;
-      if (isDragging.current && start) {
-        maximumDragDistance.current = Math.max(
-          maximumDragDistance.current,
-          distanceBetweenPoints(start.x, start.y, x, y),
-        );
-      }
       if (!previous) return;
       exciteRotation(x - previous.x, time - previous.time);
     },
@@ -384,25 +365,15 @@ export const useHairMotion = (petElement: PetElementRef) => {
         ? recentCursor
         : { x: screenX, y: screenY, time: now };
     isDragging.current = true;
-    dragStart.current = initialSample;
     lastDragSample.current = initialSample;
-    windowDragStart.current = lastWindowSample.current;
-    maximumDragDistance.current = 0;
   }, []);
 
   const endDrag = useCallback(() => {
-    const didDrag = exceedsDragThreshold(
-      maximumDragDistance.current,
-      config.dragThresholdPx,
-    );
     isDragging.current = false;
-    dragStart.current = null;
     lastDragSample.current = null;
-    windowDragStart.current = null;
     // 保留最后一次拖动冲量，让 targetDecayPerSecond 驱动自然回摆。
     ensureAnimation();
-    return didDrag;
-  }, [config, ensureAnimation]);
+  }, [ensureAnimation]);
 
   useEffect(() => {
     let disposed = false;

@@ -8,17 +8,5 @@ export const normalizeDragVelocity = (
   return Math.max(-1, Math.min(1, normalized));
 };
 
-export const distanceBetweenPoints = (
-  startX: number,
-  startY: number,
-  currentX: number,
-  currentY: number,
-) => Math.hypot(currentX - startX, currentY - startY);
-
-export const exceedsDragThreshold = (
-  distancePx: number,
-  thresholdPx: number,
-) => distancePx >= thresholdPx;
-
 export const scaleHairRotation = (rotationDeg: number, ratio: number) =>
   rotationDeg * ratio;

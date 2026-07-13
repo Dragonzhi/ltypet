@@ -1,44 +1,50 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use std::sync::OnceLock;
+use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::Emitter;
 use tauri::Manager;
-use tauri::menu::{MenuBuilder, MenuItemBuilder};
-use windows::Win32::Foundation::{POINT, LPARAM, WPARAM, LRESULT};
+use windows::Win32::Foundation::{LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, GetCursorPos, GetMessageW, SetWindowsHookExW,
-    TranslateMessage, UnhookWindowsHookEx, HHOOK, MSG, WH_MOUSE_LL,
+    TranslateMessage, UnhookWindowsHookEx, HHOOK, MSG, WH_MOUSE_LL, WM_LBUTTONUP,
 };
 
 static APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
 
 unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    if let Some(app) = APP_HANDLE.get() {
+    if code >= 0 {
+        let Some(app) = APP_HANDLE.get() else {
+            return CallNextHookEx(None, code, wparam, lparam);
+        };
         let mut pos = POINT::default();
         if GetCursorPos(&mut pos).is_ok() {
-            let _ = app.emit(
-                "global-cursor-move",
-                serde_json::json!({ "x": pos.x as f64, "y": pos.y as f64 }),
-            );
+            let payload = serde_json::json!({ "x": pos.x as f64, "y": pos.y as f64 });
+            let _ = app.emit("global-cursor-move", payload.clone());
+            if is_left_button_up(wparam.0) {
+                let _ = app.emit("global-left-button-up", payload);
+            }
         }
     }
     CallNextHookEx(None, code, wparam, lparam)
 }
 
+fn is_left_button_up(message: usize) -> bool {
+    message == WM_LBUTTONUP as usize
+}
+
 fn start_global_mouse_hook(app_handle: tauri::AppHandle) {
     APP_HANDLE.set(app_handle).ok();
-    std::thread::spawn(move || {
-        unsafe {
-            let hook: HHOOK = SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook_proc), None, 0)
-                .expect("failed to set global mouse hook");
+    std::thread::spawn(move || unsafe {
+        let hook: HHOOK = SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook_proc), None, 0)
+            .expect("failed to set global mouse hook");
 
-            let mut msg = MSG::default();
-            while GetMessageW(&mut msg, None, 0, 0).as_bool() {
-                let _ = TranslateMessage(&msg);
-                let _ = DispatchMessageW(&msg);
-            }
-
-            let _ = UnhookWindowsHookEx(hook);
+        let mut msg = MSG::default();
+        while GetMessageW(&mut msg, None, 0, 0).as_bool() {
+            let _ = TranslateMessage(&msg);
+            let _ = DispatchMessageW(&msg);
         }
+
+        let _ = UnhookWindowsHookEx(hook);
     });
 }
 
@@ -58,7 +64,10 @@ async fn close_window(window: tauri::Window) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn setup_context_menu(app: tauri::AppHandle, window: tauri::WebviewWindow) -> Result<(), String> {
+async fn setup_context_menu(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+) -> Result<(), String> {
     let exit_item = MenuItemBuilder::new("退出")
         .id("exit")
         .accelerator("Ctrl+Shift+Q")
@@ -117,4 +126,16 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_left_button_up;
+    use windows::Win32::UI::WindowsAndMessaging::{WM_LBUTTONUP, WM_MOUSEMOVE};
+
+    #[test]
+    fn maps_only_left_button_up_to_drag_release() {
+        assert!(is_left_button_up(WM_LBUTTONUP as usize));
+        assert!(!is_left_button_up(WM_MOUSEMOVE as usize));
+    }
 }

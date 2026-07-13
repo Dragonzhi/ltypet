@@ -30,7 +30,7 @@
 ## 当前状态（v0.1.0）
 
 ### 已实现
-- [x] Tauri v2 透明无边框窗口（AlwaysOnTop + skipTaskbar + 点击穿透）
+- [x] Tauri v2 透明无边框小窗口（AlwaysOnTop + skipTaskbar + SVG 轮廓外动态点击穿透）
 - [x] “小洛宝”分层 SVG 角色（头/身/双眼/嘴/四肢/发尾可独立动画）
 - [x] 状态机骨架（6 种状态：idle / blink / listen / speak / sleep / drag）
 - [x] 落地呼吸动画（脚底固定、身体小幅起伏 + 手臂摆动）
@@ -38,7 +38,7 @@
 - [x] 分层鼠标跟随（身体/头部/五官/眉毛）、眨眼补间、手臂与领带待机微动
 - [x] 拖拽时双马尾惯性回摆、双耳长间隔随机微动
 - [x] 单击角色触发一次招手（拖拽超过阈值时不误触）
-- [x] 鼠标拖拽（任意位置拖放，但是窗口小，不能拖到窗口外）
+- [x] 非阻塞原生窗口拖拽（全局鼠标驱动 `setPosition`，拖动期间角色动画持续运行）
 - [x] Git 初始化 + 首次提交
 - [x] `.gitignore` 覆盖 target/node_modules/dist
 - [x] cargo 中科大镜像源配置
@@ -77,9 +77,12 @@ D:\WorkProject\ltypet\ltypet\
 │   ├── assets/
 │   │   └── 小洛宝.svg         # Inkscape 可编辑的角色美术源文件
 │   ├── config/
-│   │   └── petAnimation.ts     # 角色跟随、惯性与随机动画的集中参数
+│   │   ├── petAnimation.ts     # 角色跟随、惯性与随机动画的集中参数
+│   │   └── petInteraction.ts   # 点击穿透、命中容差与窗口拖动参数
 │   ├── hooks/
-│   │   └── usePetMotion.ts     # 鼠标分层跟随与马尾弹簧惯性
+│   │   ├── usePetMotion.ts     # 鼠标分层跟随与马尾弹簧惯性
+│   │   ├── useWindowDrag.ts    # 非阻塞原生窗口拖动
+│   │   └── useClickThrough.ts  # SVG 轮廓命中与动态点击穿透
 │   └── components/
 │       ├── TianyiPet.tsx      # 状态机、眨眼、视线跟随与拖拽交互
 │       └── TianyiArtwork.tsx  # 内联 SVG 并映射可动画图层
@@ -197,5 +200,5 @@ registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
 3. SVG 角色当前是手写近似天依，后续可以用专业工具（Adobe Illustrator / Inkscape）导出优化
 4. 首次 `npm run tauri dev` 的 `cargo build` 需要较长时间（下载几百个 crates），后续增量编译很快
 5. 项目不需要 Git LFS（当前无大文件），将来加音频时再配置
-6. `decorations: false` 会失去窗口标题栏，拖拽已由前端 JS 实现
+6. `decorations: false` 会失去窗口标题栏；拖拽由全局鼠标事件配合 Tauri `setPosition` 实现，不再依赖会阻塞动画的系统拖动循环
 7. npm 依赖使用宽松的 semver 范围，且根目录 `.gitignore` 当前忽略了 `package-lock.json`，不同机器执行 `npm install` 可能得到不同的小版本。排查依赖或构建问题时，先记录 `node --version` 和 `npm ls --depth=0`

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { cursorPosition, getCurrentWindow } from "@tauri-apps/api/window";
 import TianyiArtwork, {
   type PetAction,
   type PetExpression,
@@ -9,6 +10,13 @@ import {
   useHairMotion,
   usePointerFollow,
 } from "../hooks/usePetMotion";
+import { useClickThrough } from "../hooks/useClickThrough";
+import { useWindowDrag } from "../hooks/useWindowDrag";
+import { PET_INTERACTION_CONFIG } from "../config/petInteraction";
+import {
+  distanceBetweenPoints,
+  exceedsDragThreshold,
+} from "../motion/petInteractionMath";
 
 // 天依的核心动画状态
 type PetState = "idle" | "blink" | "listen" | "speak" | "sleep" | "drag";
@@ -28,7 +36,20 @@ const TianyiPet = () => {
   const restoreStateTimer = useRef<number | undefined>(undefined);
   usePointerFollow(petElement, "global");
   useEarTwitch(petElement);
-  const hairMotion = useHairMotion(petElement);
+  const { beginDrag: beginHairDrag, endDrag: endHairDrag } =
+    useHairMotion(petElement);
+  const handleWindowDragEnd = useCallback(
+    (didDrag: boolean) => {
+      hasDragged.current = didDrag;
+      endHairDrag();
+      setState("idle");
+    },
+    [endHairDrag],
+  );
+  const windowDrag = useWindowDrag({ onEnd: handleWindowDragEnd });
+  useClickThrough(petElement, {
+    forceInteractive: state === "drag" || windowDrag.isDragging,
+  });
 
   // idle 动画循环 — 随机眨眼，并在短暂动作结束后恢复原状态。
   useEffect(() => {
@@ -59,13 +80,29 @@ const TianyiPet = () => {
     setAction("none");
     setState("drag");
     hasDragged.current = false;
-    hairMotion.beginDrag(event.screenX, event.screenY);
+    beginHairDrag(event.screenX, event.screenY);
+    if (windowDrag.beginDrag(event.screenX, event.screenY)) return;
+
+    // 初始化尚未完成时保留系统拖动作为降级路径。
+    let fallbackDidDrag = false;
     try {
+      const [cursor, factor] = await Promise.all([
+        cursorPosition(),
+        getCurrentWindow().scaleFactor(),
+      ]);
+      const fallbackStart = { x: cursor.x, y: cursor.y };
       await invoke("start_dragging");
+      const endCursor = await cursorPosition();
+      fallbackDidDrag = exceedsDragThreshold(
+        distanceBetweenPoints(fallbackStart, endCursor),
+        PET_INTERACTION_CONFIG.windowDrag.dragThresholdCssPx,
+        factor,
+      );
     } catch (err) {
       console.error("拖拽失败:", err);
     } finally {
-      hasDragged.current = hairMotion.endDrag();
+      hasDragged.current = fallbackDidDrag;
+      endHairDrag();
       setState("idle");
     }
   };
@@ -114,9 +151,6 @@ const TianyiPet = () => {
       role="button"
       style={{
         cursor: state === "drag" ? "grabbing" : "grab",
-        // -webkit-app-region: drag 让整个 WebView 区域可拖动；
-        // 交互元素需通过 -webkit-app-region: no-drag 排除（暂无按钮，先留占位）
-        ...({ "-webkit-app-region": "drag" } as React.CSSProperties),
       }}
       tabIndex={0}
     >
