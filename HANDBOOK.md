@@ -1,205 +1,91 @@
-# 天依桌宠 — Project Handover
+# 天依桌宠 — 产品手册
 
-> 交接日期：2026-07-12
-> 项目路径：`D:\WorkProject\ltypet\ltypet\`
-> 初始搭建：Hanako（HanaAgent）→ 交接给 Codex CLI 继续开发
+> 当前版本：0.1.0
+>
+> 初始交接：2026-07-12，Hanako（HanaAgent）→ Codex CLI
 
----
+本文档是产品愿景、当前体验和路线图的唯一维护位置。编码规范、技术入口、命令与完成标准见 [`AGENTS.md`](./AGENTS.md)；依赖版本和真实行为发生冲突时，以代码、配置与实际校验结果为准。
 
-## 项目愿景
+## 1. 项目愿景
 
-一只坐在桌面角落的洛天依。她能跟你聊天（LLM），能开番茄钟一起专注，会感知你在写代码/听歌/摸鱼，并做出相应反应。她有自己的性格，你们的关系会随着相处慢慢加深。
+一只安静地待在桌面角落的洛天依。她能通过自然的小动作提供陪伴，未来可以一起专注、聊天、听 Lo-Fi，并在用户授权后对当前工作状态作出克制的反馈。她不是普通工具悬浮窗，而是有持续性格和关系感的桌面伙伴。
 
-对标产品：Clawd on Desk（技术架构）+ 放松时光：与你共享Lo-Fi Story（产品气质）+ FL Studio 水果娘（角色灵魂）
+产品体验原则：
 
----
+- 轻量、安静，不遮挡或打断当前工作。
+- 角色表现自然、有生命感，基础交互离线可用。
+- 网络、LLM、系统感知和音频检测不可用时，桌宠仍能独立运行。
+- 默认保护隐私；采集和外发都必须显式、可控并可关闭。
+- 功能宁可暂缺，也不以无法退出、误拦截点击或虚假反馈换取表面完整。
 
-## 技术栈
+产品气质参考：Clawd on Desk 的轻量桌面交互、Lo-Fi Story 的安静陪伴感，以及虚拟歌姬角色本身的辨识度。
 
-| 层 | 技术 | 说明 |
-|---|---|---|
-| 桌面壳 | **Tauri v2** | Rust 后端 + 系统 WebView，5MB 二进制 |
-| 前端框架 | **React 19 + TypeScript 5.8** | 以 `package.json` 与实际安装版本为准 |
-| 构建工具 | **Vite 7** | 以 `package.json` 与实际安装版本为准 |
-| 角色渲染 | **SVG (内联)** | 纯矢量，代码可控，无额外依赖 |
-| Rust 版本 | **1.97.0** | |
-| Node 版本 | **22.20.0** | |
+## 2. 当前产品状态
 
----
+### 已实现体验
 
-## 当前状态（v0.1.0）
+- `400 × 500` 透明、无边框、置顶、跳过任务栏的小型 Tauri 窗口。
+- “小洛宝”Q 版分层 SVG，头、身体、五官、四肢、马尾、耳朵和发饰可独立动画。
+- 脚底固定的呼吸起伏、随机眨眼、手臂和领带待机微动。
+- 眼睛、眉毛、嘴、腮红、头部、身体、手臂和马尾的分层鼠标跟随；视觉零点按 DPI 对准双眼中心。
+- 马尾、刘海、鬓发和发饰基于 SVG pivot 的待机摆动与拖动惯性；双耳长间隔同步微动。
+- 单击角色招手一次，超过阈值的拖动不会误触招手。
+- 基于全局鼠标和 `setPosition` 的非阻塞原生窗口拖动，拖动期间动画保持运行。
+- SVG 可见轮廓外动态点击穿透；角色轮廓、拖动过程和原生菜单保持可交互。
+- Windows 原生右键菜单：切换始终置顶、回到当前显示器中央、退出小洛宝。
+- `ContextMenu`、`Shift+F10` 和 `Ctrl+Shift+Q` 键盘路径。
+- Vitest 前端数学测试和 Rust 菜单/鼠标消息映射测试。
 
-### 已实现
-- [x] Tauri v2 透明无边框小窗口（AlwaysOnTop + skipTaskbar + SVG 轮廓外动态点击穿透）
-- [x] “小洛宝”分层 SVG 角色（头/身/双眼/嘴/四肢/发尾可独立动画）
-- [x] 状态机骨架（6 种状态：idle / blink / listen / speak / sleep / drag）
-- [x] 落地呼吸动画（脚底固定、身体小幅起伏 + 手臂摆动）
-- [x] 随机眨眼（3-5 秒间隔）
-- [x] 分层鼠标跟随（身体/头部/五官/眉毛）、眨眼补间、手臂与领带待机微动
-- [x] 拖拽时双马尾惯性回摆、双耳长间隔随机微动
-- [x] 单击角色触发一次招手（拖拽超过阈值时不误触）
-- [x] 非阻塞原生窗口拖拽（全局鼠标驱动 `setPosition`，拖动期间角色动画持续运行）
-- [x] 原生右键菜单（始终置顶、回到当前屏幕中央、退出）及键盘入口
-- [x] Git 初始化 + 首次提交
-- [x] `.gitignore` 覆盖 target/node_modules/dist
-- [x] cargo 中科大镜像源配置
+### 当前边界
 
-### 待实现（按优先级）
-- [x] SVG 角色形象细化（采用“小洛宝”Q 版极简造型）
-- [ ] 更多动画状态（听歌律动、打哈欠、伸懒腰）
-- [ ] 窗口吸附（拖到屏幕边缘吸附/贴任务栏）
-- [ ] 更多点击交互（表情反应、双击弹出菜单）
-- [ ] 粒子特效（音符飘动、星光）
-- [ ] 设置界面与角色模式切换
-- [ ] 状态持久化（窗口位置、偏好设置）
-- [ ] Rust 后端（番茄钟计时器、系统音频检测、前台窗口感知）
-- [ ] LLM 对话接入（双击天依打开聊天窗）
-- [ ] Lo-Fi 背景音乐 + 环境音
-- [ ] 羁绊/好感度系统
+- `idle | blink | listen | speak | sleep | drag` 已有状态骨架，但 `listen`、`speak` 和 `sleep` 尚未形成完整可达流程。
+- 始终置顶选择只在本次运行期间有效，窗口位置和偏好尚未持久化。
+- 尚无窗口边缘吸附、托盘、设置界面和角色模式切换。
+- 尚无番茄钟、前台窗口感知、系统音频检测、聊天、LLM、TTS、音乐或羁绊系统。
+- 基础桌宠当前不依赖网络；也没有向外发送系统感知或用户内容。
+- `README.md` 仍是模板内容，尚未整理为面向使用者的安装与使用说明。
 
----
+## 3. 近期路线图
 
-## 项目结构
+### 角色与桌面体验
 
-```
-D:\WorkProject\ltypet\ltypet\
-│
-├── index.html                 # 入口 HTML（透明背景）
-├── package.json               # npm 依赖
-├── vite.config.ts             # Vite 配置
-├── tsconfig.json              # TypeScript 配置
-├── .gitignore                 # 已配置：node_modules/dist/target
-│
-├── src/                       # 前端（React + TS）
-│   ├── main.tsx               # React 入口
-│   ├── App.tsx                # 根组件 → 挂载 TianyiPet
-│   ├── App.css                # 全局样式与 SVG 动画（透明背景）
-│   ├── vite-env.d.ts
-│   ├── assets/
-│   │   └── 小洛宝.svg         # Inkscape 可编辑的角色美术源文件
-│   ├── config/
-│   │   ├── petAnimation.ts     # 角色跟随、惯性与随机动画的集中参数
-│   │   └── petInteraction.ts   # 点击穿透、命中容差与窗口拖动参数
-│   ├── hooks/
-│   │   ├── usePetMotion.ts     # 鼠标分层跟随与马尾弹簧惯性
-│   │   ├── useWindowDrag.ts    # 非阻塞原生窗口拖动
-│   │   └── useClickThrough.ts  # SVG 轮廓命中与动态点击穿透
-│   └── components/
-│       ├── TianyiPet.tsx      # 状态机、眨眼、视线跟随与拖拽交互
-│       └── TianyiArtwork.tsx  # 内联 SVG 并映射可动画图层
-│
-├── src-tauri/                 # 后端（Rust + Tauri）
-│   ├── Cargo.toml             # Rust 依赖
-│   ├── Cargo.lock
-│   ├── build.rs
-│   ├── tauri.conf.json        # ⚠️ 核心：窗口配置
-│   ├── capabilities/default.json
-│   ├── src/
-│   │   ├── main.rs            # Rust 入口
-│   │   └── lib.rs             # Tauri 命令注册
-│   ├── icons/                 # 应用图标
-│   └── .gitignore
-│
-├── public/                    # 静态资源
-│   └── tauri.svg
-│
-└── .vscode/
-    └── extensions.json        # VS Code 推荐插件
-```
+- [ ] 更多短动作和状态：打哈欠、伸懒腰、听歌律动、表情反应。
+- [ ] 双击交互和轻量对话入口。
+- [ ] 音符、星光等克制的粒子效果，并提供减少动态效果降级。
+- [ ] 窗口边缘和任务栏吸附。
+- [ ] 窗口位置、置顶和动画偏好持久化。
+- [ ] 托盘、设置界面与角色模式切换。
 
----
+### 本地能力
 
-## 窗口配置（tauri.conf.json 关键部分）
+- [ ] 可靠番茄钟和专注陪伴反馈。
+- [ ] 经用户授权的前台窗口与系统音频活动感知。
+- [ ] Lo-Fi 背景音乐和环境音控制。
 
-```json
-"windows": [{
-  "label": "main",
-  "width": 400,
-  "height": 500,
-  "decorations": false,      // 无边框
-  "transparent": true,        // 透明背景
-  "alwaysOnTop": true,        // 置顶
-  "skipTaskbar": true,        // 不显示在任务栏
-  "resizable": false,
-  "shadow": false,
-  "center": true
-}]
-```
+### 联网与长期系统
 
----
+- [ ] LLM 对话与离线降级。
+- [ ] 可选 TTS/语音能力。
+- [ ] 羁绊、好感度和长期记忆，并提供透明的数据管理入口。
 
-## 角色状态机设计
+## 4. 已确定的产品与架构边界
 
-```typescript
-type PetState =
-  | "idle"     // 默认待机，呼吸动画 + 随机眨眼
-  | "blink"    // 眨眼（200ms 过渡态）
-  | "listen"   // 听到音乐/声音，头部轻晃
-  | "speak"    // 说话/开心，眯眼笑 + 张嘴
-  | "sleep"    // 长时间无操作，闭眼 + zZZ
-  | "drag"     // 被拖拽中（cursor: grabbing）
-```
+- 保持小型透明原生窗口，不使用覆盖整个屏幕的透明 WebView。
+- 桌面移动通过移动 Tauri 原生窗口实现，角色不在固定窗口内部无限平移。
+- 点击穿透按 SVG 可见轮廓动态切换，而不是让整窗永久穿透。
+- 角色动画以分层 SVG、pivot 和 CSS/JS 小型运动系统实现，不追求骨骼工具级复杂度。
+- 纸片关节轻微分离、四肢或马尾与身体短暂脱开可以作为风格特征，但连接点和层级切换不应产生明显跳变。
+- 番茄钟、持久化和系统感知等可靠性能力放在原生层；角色视觉与短时交互留在前端。
+- 所有联网、音频与系统感知能力必须可选，并保证基础桌宠离线可用。
 
-每个状态的视觉表现通过 React state 控制 SVG 对应元素（眼形、嘴形、头发旋转等），无帧动画，全是声明式渲染。
+## 5. 外部参考
 
----
+| 项目 | 参考方向 |
+|---|---|
+| [Kokoro Engine](https://github.com/chyinan/Kokoro-Engine) | Tauri、角色引擎、LLM 与 TTS 的整体分层 |
+| [Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk) | 轻量 SVG 桌宠和 Agent 交互气质 |
+| [Desktop Pet Framework](https://github.com/solt-frfr/desktop-pet-framework) | 桌宠动作与状态机 |
+| [OpenPet](https://github.com/X-T-E-R/OpenPet) | Tauri 透明窗口与外部控制 |
+| BongoCat | 大规模用户验证过的透明窗口渲染思路 |
 
-## 开发命令
-
-```bash
-# 启动开发模式（热重载 + Tauri 窗口）
-npm run tauri dev
-
-# 生产构建
-npm run tauri build
-
-# 仅启动前端 dev server（浏览器预览）
-npm run dev
-
-# 前端构建
-npm run build
-
-# Rust 检查
-cd src-tauri && cargo check
-
-# 查看 Git 日志
-git log --oneline
-```
-
----
-
-## Rust 镜像源配置（已配好）
-
-`C:\Users\32485\.cargo\config.toml`：
-
-```toml
-[source.crates-io]
-replace-with = "ustc"
-
-[source.ustc]
-registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
-```
-
----
-
-## 关键参考项目
-
-| 项目 | 链接 | 参考价值 |
-|------|------|---------|
-| Kokoro Engine | https://github.com/chyinan/Kokoro-Engine | Tauri v2 + Live2D/Pixi + LLM + TTS，最完整的开源桌宠实现 |
-| Clawd on Desk | https://github.com/rullerzhou-afk/clawd-on-desk | Electron + SVG + Agent hooks，5.2k stars |
-| Desktop Pet Framework | https://github.com/solt-frfr/desktop-pet-framework | Godot 桌宠，角色动画状态机参考 |
-| OpenPet | https://github.com/X-T-E-R/OpenPet | Tauri + 透明窗口 + MCP 控制 |
-| BongoCat | BongoCat (17k stars) | Tauri 透明窗口渲染管线已被大用户量验证 |
-
----
-
-## 开发者备注
-
-1. 如果 `cargo build` 下载依赖慢 → 检查 `.cargo/config.toml` 是否指向 USTC 镜像
-2. 透明窗口调试时，Tauri 控制台会显示在 Vite dev server 终端（不是浏览器 F12）
-3. SVG 角色当前是手写近似天依，后续可以用专业工具（Adobe Illustrator / Inkscape）导出优化
-4. 首次 `npm run tauri dev` 的 `cargo build` 需要较长时间（下载几百个 crates），后续增量编译很快
-5. 项目不需要 Git LFS（当前无大文件），将来加音频时再配置
-6. `decorations: false` 会失去窗口标题栏；拖拽由全局鼠标事件配合 Tauri `setPosition` 实现，不再依赖会阻塞动画的系统拖动循环
-7. npm 依赖使用宽松的 semver 范围，且根目录 `.gitignore` 当前忽略了 `package-lock.json`，不同机器执行 `npm install` 可能得到不同的小版本。排查依赖或构建问题时，先记录 `node --version` 和 `npm ls --depth=0`
+参考架构思想即可。复制外部代码、美术、字体或音频前必须核对许可证；洛天依角色、公式服和衍生素材还需遵守对应 IP 与二次创作规范。仓库中的角色素材应保留来源与可编辑原稿，未来公开发布前单独完成授权审查。
