@@ -2,6 +2,12 @@ import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { PET_ANIMATION_CONFIG } from "../config/petAnimation";
+import {
+  distanceBetweenPoints,
+  exceedsDragThreshold,
+  normalizeDragVelocity,
+  scaleHairRotation,
+} from "../motion/hairMotionMath";
 
 type PetElementRef = RefObject<HTMLDivElement | null>;
 
@@ -29,6 +35,10 @@ export const usePointerFollow = (
     petElementRef.current.current?.style.setProperty(
       "--arm-left-rest-y",
       px(config.arm.leftRestOffsetY),
+    );
+    petElementRef.current.current?.style.setProperty(
+      "--look-transition-ms",
+      `${config.transitionMs}ms`,
     );
 
     const updatePosition = () => {
@@ -87,8 +97,6 @@ export const usePointerFollow = (
       set("--arm-look-x", px(directionX * config.arm.maxOffsetX));
       set("--arm-look-y", px(directionY * config.arm.maxOffsetY));
       set("--arm-look-rotate", deg(directionX * config.arm.maxRotateDeg));
-      set("--tail-look-x", px(directionX * config.hairTail.maxOffsetX));
-      set("--tail-look-y", px(directionY * config.hairTail.maxOffsetY));
       set(
         "--tail-look-rotate",
         deg(directionX * config.hairTail.maxRotateDeg),
@@ -138,10 +146,6 @@ export const usePointerFollow = (
       }
     };
 
-    petElement.current?.style.setProperty(
-      "--look-transition-ms",
-      `${config.transitionMs}ms`,
-    );
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     return () => {
       window.removeEventListener("pointermove", handlePointerMove);
@@ -217,12 +221,17 @@ interface DragSample {
   time: number;
 }
 
-export const useTailInertia = (petElement: PetElementRef) => {
+export const useHairMotion = (petElement: PetElementRef) => {
+  const config = PET_ANIMATION_CONFIG.hairMotion;
   const frame = useRef<number | undefined>(undefined);
   const previousFrameTime = useRef<number | undefined>(undefined);
+  const latestCursor = useRef<DragSample | null>(null);
+  const dragStart = useRef<DragSample | null>(null);
   const lastDragSample = useRef<DragSample | null>(null);
-  const xAxis = useRef<SpringAxis>({ position: 0, velocity: 0, target: 0 });
-  const yAxis = useRef<SpringAxis>({ position: 0, velocity: 0, target: 0 });
+  const lastWindowSample = useRef<DragSample | null>(null);
+  const windowDragStart = useRef<DragSample | null>(null);
+  const maximumDragDistance = useRef(0);
+  const isDragging = useRef(false);
   const rotationAxis = useRef<SpringAxis>({
     position: 0,
     velocity: 0,
@@ -232,22 +241,42 @@ export const useTailInertia = (petElement: PetElementRef) => {
   const writeMotion = useCallback(() => {
     const pet = petElement.current;
     if (!pet) return;
-    const config = PET_ANIMATION_CONFIG.tailInertia;
-    pet.style.setProperty("--tail-inertia-x", px(xAxis.current.position));
-    pet.style.setProperty("--tail-inertia-y", px(yAxis.current.position));
+    const rotation = rotationAxis.current.position;
+    const ratio = config.inertiaRatio;
     pet.style.setProperty(
       "--tail-left-inertia-rotate",
-      deg(rotationAxis.current.position),
+      deg(scaleHairRotation(rotation, ratio.tailLeft)),
     );
     pet.style.setProperty(
       "--tail-right-inertia-rotate",
-      deg(rotationAxis.current.position * config.rightTailRotationRatio),
+      deg(scaleHairRotation(rotation, ratio.tailRight)),
     );
-  }, [petElement]);
+    pet.style.setProperty(
+      "--fringe-inertia-rotate",
+      deg(scaleHairRotation(rotation, ratio.fringe)),
+    );
+    pet.style.setProperty(
+      "--temple-left-inertia-rotate",
+      deg(scaleHairRotation(rotation, ratio.temple)),
+    );
+    pet.style.setProperty(
+      "--temple-right-inertia-rotate",
+      deg(scaleHairRotation(rotation, ratio.temple)),
+    );
+    for (const side of ["left", "right"] as const) {
+      pet.style.setProperty(
+        `--blue-accessory-${side}-inertia-rotate`,
+        deg(scaleHairRotation(rotation, ratio.blueAccessory)),
+      );
+      pet.style.setProperty(
+        `--white-accessory-${side}-inertia-rotate`,
+        deg(scaleHairRotation(rotation, ratio.whiteAccessory)),
+      );
+    }
+  }, [config, petElement]);
 
   const step = useCallback(
     (time: number) => {
-      const config = PET_ANIMATION_CONFIG.tailInertia;
       const previous = previousFrameTime.current ?? time;
       const deltaSeconds = Math.min((time - previous) / 1000, 0.033);
       previousFrameTime.current = time;
@@ -255,7 +284,7 @@ export const useTailInertia = (petElement: PetElementRef) => {
       const velocityDamping = Math.exp(-config.damping * deltaSeconds);
       let isMoving = false;
 
-      for (const axis of [xAxis.current, yAxis.current, rotationAxis.current]) {
+      for (const axis of [rotationAxis.current]) {
         axis.target *= decay;
         axis.velocity +=
           (axis.target - axis.position) * config.stiffness * deltaSeconds;
@@ -282,7 +311,7 @@ export const useTailInertia = (petElement: PetElementRef) => {
         previousFrameTime.current = undefined;
       }
     },
-    [writeMotion],
+    [config, writeMotion],
   );
 
   const ensureAnimation = useCallback(() => {
@@ -292,46 +321,226 @@ export const useTailInertia = (petElement: PetElementRef) => {
     }
   }, [step]);
 
-  const startDrag = useCallback((x: number, y: number, time: number) => {
-    lastDragSample.current = { x, y, time };
-  }, []);
+  const exciteRotation = useCallback(
+    (deltaX: number, deltaMs: number) => {
+      const normalizedX = normalizeDragVelocity(
+        deltaX,
+        deltaMs,
+        config.velocityForMaxPxPerMs,
+      );
+      rotationAxis.current.target =
+        -normalizedX * config.maxInertiaRotateDeg;
+      ensureAnimation();
+    },
+    [config, ensureAnimation],
+  );
 
   const sampleDrag = useCallback(
     (x: number, y: number, time: number) => {
+      const currentSample = { x, y, time };
+      latestCursor.current = currentSample;
+      if (!isDragging.current) return;
+
+      const start = dragStart.current;
+      if (start) {
+        maximumDragDistance.current = Math.max(
+          maximumDragDistance.current,
+          distanceBetweenPoints(start.x, start.y, x, y),
+        );
+      }
       const previous = lastDragSample.current;
-      lastDragSample.current = { x, y, time };
+      lastDragSample.current = currentSample;
       if (!previous) return;
 
-      const config = PET_ANIMATION_CONFIG.tailInertia;
-      const deltaMs = clamp(time - previous.time, 8, 64);
-      const velocityX = (x - previous.x) / deltaMs;
-      const velocityY = (y - previous.y) / deltaMs;
-      const normalizedX = clamp(
-        velocityX / config.velocityForMaxPxPerMs,
-        -1,
-        1,
-      );
-      const normalizedY = clamp(
-        velocityY / config.velocityForMaxPxPerMs,
-        -1,
-        1,
-      );
-
-      xAxis.current.target = -normalizedX * config.maxOffsetX;
-      yAxis.current.target = -normalizedY * config.maxOffsetY;
-      rotationAxis.current.target = -normalizedX * config.maxRotateDeg;
-      ensureAnimation();
+      exciteRotation(x - previous.x, time - previous.time);
     },
-    [ensureAnimation],
+    [exciteRotation],
   );
 
-  const release = useCallback(() => {
+  const sampleWindowMove = useCallback(
+    (x: number, y: number, time: number) => {
+      const currentSample = { x, y, time };
+      const previous = lastWindowSample.current;
+      lastWindowSample.current = currentSample;
+
+      const start = windowDragStart.current;
+      if (isDragging.current && start) {
+        maximumDragDistance.current = Math.max(
+          maximumDragDistance.current,
+          distanceBetweenPoints(start.x, start.y, x, y),
+        );
+      }
+      if (!previous) return;
+      exciteRotation(x - previous.x, time - previous.time);
+    },
+    [exciteRotation],
+  );
+
+  const beginDrag = useCallback((screenX: number, screenY: number) => {
+    const now = performance.now();
+    const recentCursor = latestCursor.current;
+    const initialSample =
+      recentCursor && now - recentCursor.time < 100
+        ? recentCursor
+        : { x: screenX, y: screenY, time: now };
+    isDragging.current = true;
+    dragStart.current = initialSample;
+    lastDragSample.current = initialSample;
+    windowDragStart.current = lastWindowSample.current;
+    maximumDragDistance.current = 0;
+  }, []);
+
+  const endDrag = useCallback(() => {
+    const didDrag = exceedsDragThreshold(
+      maximumDragDistance.current,
+      config.dragThresholdPx,
+    );
+    isDragging.current = false;
+    dragStart.current = null;
     lastDragSample.current = null;
-    xAxis.current.target = 0;
-    yAxis.current.target = 0;
-    rotationAxis.current.target = 0;
+    windowDragStart.current = null;
+    // 保留最后一次拖动冲量，让 targetDecayPerSecond 驱动自然回摆。
     ensureAnimation();
-  }, [ensureAnimation]);
+    return didDrag;
+  }, [config, ensureAnimation]);
+
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void listen<{ x: number; y: number }>("global-cursor-move", (event) => {
+      sampleDrag(event.payload.x, event.payload.y, performance.now());
+    }).then((stopListening) => {
+      if (disposed) stopListening();
+      else unlisten = stopListening;
+    });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [sampleDrag]);
+
+  useEffect(() => {
+    const windowHandle = getCurrentWindow();
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    void windowHandle.outerPosition().then((position) => {
+      if (!disposed && !lastWindowSample.current) {
+        lastWindowSample.current = {
+          x: position.x,
+          y: position.y,
+          time: performance.now(),
+        };
+      }
+    });
+    void windowHandle.onMoved((event) => {
+      sampleWindowMove(
+        event.payload.x,
+        event.payload.y,
+        performance.now(),
+      );
+    }).then((stopListening) => {
+      if (disposed) stopListening();
+      else unlisten = stopListening;
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [sampleWindowMove]);
+
+  useEffect(() => {
+    const pet = petElement.current;
+    if (!pet) return;
+    const idle = config.idle;
+    const setIdle = (
+      id: string,
+      amplitude: number,
+      durationMs: number,
+      delayMs: number,
+      mirrored: boolean,
+    ) => {
+      const layer = pet.querySelector<SVGGElement>(`#${id}`);
+      if (!layer) return;
+      const from = mirrored ? amplitude : -amplitude;
+      layer.style.setProperty("--hair-idle-from", deg(from));
+      layer.style.setProperty("--hair-idle-to", deg(-from));
+      layer.style.setProperty("--hair-idle-duration", `${durationMs}ms`);
+      layer.style.setProperty("--hair-idle-delay", `${delayMs}ms`);
+    };
+
+    setIdle(
+      "hair-tail-left",
+      idle.tail.maxRotateDeg,
+      idle.tail.durationMs,
+      idle.tail.leftDelayMs,
+      false,
+    );
+    setIdle(
+      "hair-tail-right",
+      idle.tail.maxRotateDeg,
+      idle.tail.durationMs,
+      idle.tail.rightDelayMs,
+      true,
+    );
+    setIdle(
+      "fringe",
+      idle.fringe.maxRotateDeg,
+      idle.fringe.durationMs,
+      idle.fringe.delayMs,
+      false,
+    );
+    setIdle(
+      "temple-left",
+      idle.temple.maxRotateDeg,
+      idle.temple.durationMs,
+      idle.temple.leftDelayMs,
+      false,
+    );
+    setIdle(
+      "temple-right",
+      idle.temple.maxRotateDeg,
+      idle.temple.durationMs,
+      idle.temple.rightDelayMs,
+      true,
+    );
+    setIdle(
+      "blue-hair-accessory-left",
+      idle.blueAccessory.maxRotateDeg,
+      idle.blueAccessory.durationMs,
+      idle.blueAccessory.leftDelayMs,
+      false,
+    );
+    setIdle(
+      "blue-hair-accessory-right",
+      idle.blueAccessory.maxRotateDeg,
+      idle.blueAccessory.durationMs,
+      idle.blueAccessory.rightDelayMs,
+      true,
+    );
+    setIdle(
+      "white-hair-accessory-left",
+      idle.whiteAccessory.maxRotateDeg,
+      idle.whiteAccessory.durationMs,
+      idle.whiteAccessory.leftDelayMs,
+      true,
+    );
+    setIdle(
+      "white-hair-accessory-right",
+      idle.whiteAccessory.maxRotateDeg,
+      idle.whiteAccessory.durationMs,
+      idle.whiteAccessory.rightDelayMs,
+      false,
+    );
+
+    if (frame.current !== undefined) {
+      window.cancelAnimationFrame(frame.current);
+      frame.current = undefined;
+      previousFrameTime.current = undefined;
+    }
+    writeMotion();
+  }, [config, petElement, writeMotion]);
 
   useEffect(
     () => () => {
@@ -342,5 +551,5 @@ export const useTailInertia = (petElement: PetElementRef) => {
     [],
   );
 
-  return { startDrag, sampleDrag, release };
+  return { beginDrag, endDrag };
 };

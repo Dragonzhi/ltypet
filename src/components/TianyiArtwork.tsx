@@ -38,11 +38,27 @@ const animatedLayerLabels = [
   "eyebrow_left",
   "eyebrow_right",
   "hair_front",
+  "fringe",
+  "temple_left",
+  "temple_right",
+  "blue_hair_accessory_left",
+  "blue_hair_accessory_right",
+  "white_hair_accessory_left",
+  "white_hair_accessory_right",
   "pivot_arm_left",
   "pivot_arm_right",
   "pivot_leg_left",
   "pivot_leg_right",
   "pivot_head",
+  "pivot_hair_tail_left",
+  "pivot_hair_tail_right",
+  "pivot_fringe",
+  "pivot_temple_left",
+  "pivot_temple_right",
+  "pivot_blue_hair_accessory_left",
+  "pivot_blue_hair_accessory_right",
+  "pivot_white_hair_accessory_left",
+  "pivot_white_hair_accessory_right",
 ] as const;
 
 const prepareArtwork = () => {
@@ -146,6 +162,34 @@ const TianyiArtwork = ({ expression, action }: TianyiArtworkProps) => {
     const leftEarMotion = wrapLayer(leftEar, "ear-left-motion");
     const rightEarMotion = wrapLayer(rightEar, "ear-right-motion");
 
+    const pivotRigDefinitions = [
+      ["hair-tail-left", "pivot-hair-tail-left"],
+      ["hair-tail-right", "pivot-hair-tail-right"],
+      ["fringe", "pivot-fringe"],
+      ["temple-left", "pivot-temple-left"],
+      ["temple-right", "pivot-temple-right"],
+      ["blue-hair-accessory-left", "pivot-blue-hair-accessory-left"],
+      ["blue-hair-accessory-right", "pivot-blue-hair-accessory-right"],
+      ["white-hair-accessory-left", "pivot-white-hair-accessory-left"],
+      ["white-hair-accessory-right", "pivot-white-hair-accessory-right"],
+    ] as const;
+    const pivotRigs = pivotRigDefinitions.flatMap(([layerId, pivotId]) => {
+      const layer = svg.querySelector<SVGGElement>(`#${layerId}`);
+      const layerPivot = svg.querySelector<SVGGraphicsElement>(`#${pivotId}`);
+      if (!layer || !layerPivot) return [];
+      const rig = wrapLayer(layer, `${layerId}-motion`);
+      return rig ? [{ ...rig, pivot: layerPivot }] : [];
+    });
+    const tailHeadFollows = pivotRigs
+      .filter((rig) => rig.layer.id.startsWith("hair-tail-"))
+      .map((rig) => {
+        const wrapper = document.createElementNS(svgNamespace, "g");
+        wrapper.id = `${rig.layer.id}-head-follow`;
+        rig.parent.insertBefore(wrapper, rig.wrapper);
+        wrapper.appendChild(rig.wrapper);
+        return { rig, wrapper };
+      });
+
     const measurementRestores: Array<() => void> = [];
     const overrideForMeasurement = (
       element: SVGElement | null | undefined,
@@ -170,97 +214,95 @@ const TianyiArtwork = ({ expression, action }: TianyiArtworkProps) => {
       follow,
       foregroundFollow,
       leftArmFollow?.wrapper,
+      ...pivotRigs.map((rig) => rig.wrapper),
+      ...tailHeadFollows.map((followRig) => followRig.wrapper),
     ]) {
       overrideForMeasurement(followLayer, "translate", "0px");
       overrideForMeasurement(followLayer, "rotate", "0deg");
+      overrideForMeasurement(followLayer, "transform", "none");
       overrideForMeasurement(followLayer, "transition", "none");
     }
     overrideForMeasurement(leftArm, "animation", "none");
     overrideForMeasurement(leftArm, "transform", "none");
     overrideForMeasurement(head, "transition", "none");
     overrideForMeasurement(head, "transform", "none");
+    for (const rig of pivotRigs) {
+      overrideForMeasurement(rig.layer, "animation", "none");
+      overrideForMeasurement(rig.layer, "translate", "0px");
+      overrideForMeasurement(rig.layer, "rotate", "0deg");
+      overrideForMeasurement(rig.layer, "transform", "none");
+    }
 
-    // motion 是 character 的子节点，因此 pivot 必须换算到相同的父级坐标系。
-    const pivotBounds = pivot.getBBox();
-    const pivotPoint = svg.createSVGPoint();
-    pivotPoint.x = pivotBounds.x + pivotBounds.width / 2;
-    pivotPoint.y = pivotBounds.y + pivotBounds.height / 2;
-    const pivotScreenMatrix = pivot.getScreenCTM();
-    const parentScreenMatrix = (
-      originalParent as SVGGraphicsElement
-    ).getScreenCTM?.();
-    if (pivotScreenMatrix && parentScreenMatrix) {
-      const screenPoint = pivotPoint.matrixTransform(pivotScreenMatrix);
-      const parentPoint = screenPoint.matrixTransform(
-        parentScreenMatrix.inverse(),
-      );
+    const setPivotOrigin = (
+      layerPivot: SVGGraphicsElement,
+      parent: Node,
+      targets: SVGElement[],
+    ) => {
+      const pivotBounds = layerPivot.getBBox();
+      const pivotPoint = svg.createSVGPoint();
+      pivotPoint.x = pivotBounds.x + pivotBounds.width / 2;
+      pivotPoint.y = pivotBounds.y + pivotBounds.height / 2;
+      const pivotScreenMatrix = layerPivot.getScreenCTM();
+      const parentScreenMatrix = (
+        parent as SVGGraphicsElement
+      ).getScreenCTM?.();
+      if (!pivotScreenMatrix || !parentScreenMatrix) return;
+
+      const parentPoint = pivotPoint
+        .matrixTransform(pivotScreenMatrix)
+        .matrixTransform(parentScreenMatrix.inverse());
       const viewBox = svg.viewBox.baseVal;
       const originX = ((parentPoint.x - viewBox.x) / viewBox.width) * 100;
       const originY = ((parentPoint.y - viewBox.y) / viewBox.height) * 100;
-      follow.style.transformBox = "view-box";
-      follow.style.transformOrigin = `${originX}% ${originY}%`;
-      motion.style.transformBox = "view-box";
-      motion.style.transformOrigin = `${originX}% ${originY}%`;
-      foregroundFollow.style.transformBox = "view-box";
-      foregroundFollow.style.transformOrigin = `${originX}% ${originY}%`;
-      foregroundMotion.style.transformBox = "view-box";
-      foregroundMotion.style.transformOrigin = `${originX}% ${originY}%`;
-    }
+      for (const target of targets) {
+        target.style.transformBox = "view-box";
+        target.style.transformOrigin = `${originX}% ${originY}%`;
+      }
+    };
+
+    // motion 是 character 的子节点，因此 pivot 必须换算到相同的父级坐标系。
+    setPivotOrigin(pivot, originalParent, [
+      follow,
+      motion,
+      foregroundFollow,
+      foregroundMotion,
+    ]);
 
     if (leftArmFollow && leftPivot) {
-      const leftPivotBounds = leftPivot.getBBox();
-      const leftPivotPoint = svg.createSVGPoint();
-      leftPivotPoint.x = leftPivotBounds.x + leftPivotBounds.width / 2;
-      leftPivotPoint.y = leftPivotBounds.y + leftPivotBounds.height / 2;
-      const leftPivotMatrix = leftPivot.getScreenCTM();
-      const leftParentMatrix = (
-        leftArmFollow.parent as SVGGraphicsElement
-      ).getScreenCTM?.();
-      if (leftPivotMatrix && leftParentMatrix) {
-        const parentPoint = leftPivotPoint
-          .matrixTransform(leftPivotMatrix)
-          .matrixTransform(leftParentMatrix.inverse());
-        const viewBox = svg.viewBox.baseVal;
-        const originX = ((parentPoint.x - viewBox.x) / viewBox.width) * 100;
-        const originY = ((parentPoint.y - viewBox.y) / viewBox.height) * 100;
-        leftArmFollow.wrapper.style.transformBox = "view-box";
-        leftArmFollow.wrapper.style.transformOrigin = `${originX}% ${originY}%`;
-      }
+      setPivotOrigin(leftPivot, leftArmFollow.parent, [
+        leftArmFollow.wrapper,
+      ]);
     }
     motion.style.removeProperty("animation");
     foregroundMotion.style.removeProperty("animation");
 
     if (head && headPivot && head.parentNode) {
-      const headPivotBounds = headPivot.getBBox();
-      const headPivotPoint = svg.createSVGPoint();
-      headPivotPoint.x = headPivotBounds.x + headPivotBounds.width / 2;
-      headPivotPoint.y = headPivotBounds.y + headPivotBounds.height / 2;
-      const headPivotScreenMatrix = headPivot.getScreenCTM();
-      const headParentScreenMatrix = (
-        head.parentNode as SVGGraphicsElement
-      ).getScreenCTM?.();
-      if (headPivotScreenMatrix && headParentScreenMatrix) {
-        const screenPoint = headPivotPoint.matrixTransform(
-          headPivotScreenMatrix,
-        );
-        const parentPoint = screenPoint.matrixTransform(
-          headParentScreenMatrix.inverse(),
-        );
-        const viewBox = svg.viewBox.baseVal;
-        const originX = ((parentPoint.x - viewBox.x) / viewBox.width) * 100;
-        const originY = ((parentPoint.y - viewBox.y) / viewBox.height) * 100;
-        head.style.transformBox = "view-box";
-        head.style.transformOrigin = `${originX}% ${originY}%`;
+      setPivotOrigin(headPivot, head.parentNode, [head]);
+      for (const followRig of tailHeadFollows) {
+        setPivotOrigin(headPivot, followRig.rig.parent, [
+          followRig.wrapper,
+        ]);
       }
+    }
+    for (const rig of pivotRigs) {
+      setPivotOrigin(rig.pivot, rig.parent, [rig.wrapper, rig.layer]);
     }
     measurementRestores.reverse().forEach((restore) => restore());
 
     return () => {
       // 相邻图层必须逆序还原：左耳的 nextSibling 是仍在外壳里的右耳。
-      for (const rig of [rightEarMotion, leftEarMotion, leftArmFollow]) {
+      for (const rig of [
+        leftArmFollow,
+        leftEarMotion,
+        rightEarMotion,
+        ...pivotRigs,
+      ].reverse()) {
         if (!rig) continue;
         rig.parent.insertBefore(rig.layer, rig.nextSibling);
         rig.wrapper.remove();
+      }
+      for (const followRig of tailHeadFollows) {
+        followRig.wrapper.remove();
       }
       originalParent.insertBefore(arm, originalNextSibling);
       follow.remove();

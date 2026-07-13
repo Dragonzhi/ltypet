@@ -4,7 +4,11 @@ import TianyiArtwork, {
   type PetAction,
   type PetExpression,
 } from "./TianyiArtwork";
-import { useEarTwitch, usePointerFollow } from "../hooks/usePetMotion";
+import {
+  useEarTwitch,
+  useHairMotion,
+  usePointerFollow,
+} from "../hooks/usePetMotion";
 
 // 天依的核心动画状态
 type PetState = "idle" | "blink" | "listen" | "speak" | "sleep" | "drag";
@@ -24,6 +28,7 @@ const TianyiPet = () => {
   const restoreStateTimer = useRef<number | undefined>(undefined);
   usePointerFollow(petElement, "global");
   useEarTwitch(petElement);
+  const hairMotion = useHairMotion(petElement);
 
   // idle 动画循环 — 随机眨眼，并在短暂动作结束后恢复原状态。
   useEffect(() => {
@@ -54,10 +59,14 @@ const TianyiPet = () => {
     setAction("none");
     setState("drag");
     hasDragged.current = false;
+    hairMotion.beginDrag(event.screenX, event.screenY);
     try {
       await invoke("start_dragging");
     } catch (err) {
       console.error("拖拽失败:", err);
+    } finally {
+      hasDragged.current = hairMotion.endDrag();
+      setState("idle");
     }
   };
 

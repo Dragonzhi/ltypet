@@ -32,13 +32,16 @@ body,
   --arm-look-y: 0px;
   --arm-look-rotate: 0deg;
   --arm-left-rest-y: 0px;
-  --tail-look-x: 0px;
-  --tail-look-y: 0px;
   --tail-look-rotate: 0deg;
-  --tail-inertia-x: 0px;
-  --tail-inertia-y: 0px;
   --tail-left-inertia-rotate: 0deg;
   --tail-right-inertia-rotate: 0deg;
+  --fringe-inertia-rotate: 0deg;
+  --temple-left-inertia-rotate: 0deg;
+  --temple-right-inertia-rotate: 0deg;
+  --blue-accessory-left-inertia-rotate: 0deg;
+  --blue-accessory-right-inertia-rotate: 0deg;
+  --white-accessory-left-inertia-rotate: 0deg;
+  --white-accessory-right-inertia-rotate: 0deg;
   --look-transition-ms: 110ms;
   /* 以脚底为固定点的呼吸幅度；1.003 约等于头顶起伏 1px。 */
   --breath-scale-y: 1.01;
@@ -95,30 +98,63 @@ body,
   transition: transform var(--look-transition-ms) ease-out;
 }
 
-.pet-shell:not(.is-sleeping) #hair-tail-left,
-.pet-shell:not(.is-sleeping) #hair-tail-right {
-  transform-box: fill-box;
-  transform-origin: center top;
+/* 马尾保持在 body 后方，但连接点继承头部围绕 pivot_head 的完整姿态。 */
+.tianyi-artwork #hair-tail-left-head-follow,
+.tianyi-artwork #hair-tail-right-head-follow {
+  transform: translate(var(--head-x), var(--head-y))
+    rotate(var(--head-rotate));
+  transition: transform var(--look-transition-ms) ease-out;
 }
 
-.tianyi-artwork #hair-tail-left {
-  translate: calc(var(--tail-look-x) + var(--tail-inertia-x))
-    calc(var(--tail-look-y) + var(--tail-inertia-y));
+.tianyi-artwork #hair-tail-left-motion {
   rotate: calc(var(--tail-look-rotate) + var(--tail-left-inertia-rotate));
 }
 
-.tianyi-artwork #hair-tail-right {
-  translate: calc(var(--tail-look-x) + var(--tail-inertia-x))
-    calc(var(--tail-look-y) + var(--tail-inertia-y));
+.tianyi-artwork #hair-tail-right-motion {
   rotate: calc(var(--tail-look-rotate) + var(--tail-right-inertia-rotate));
 }
 
-.pet-shell:not(.is-sleeping) #hair-tail-left {
-  animation: pet-hair-sway-left 4.4s ease-in-out infinite;
+.tianyi-artwork #fringe-motion {
+  rotate: var(--fringe-inertia-rotate);
 }
 
-.pet-shell:not(.is-sleeping) #hair-tail-right {
-  animation: pet-hair-sway-right 4.4s ease-in-out infinite;
+.tianyi-artwork #temple-left-motion {
+  rotate: var(--temple-left-inertia-rotate);
+}
+
+.tianyi-artwork #temple-right-motion {
+  rotate: var(--temple-right-inertia-rotate);
+}
+
+.tianyi-artwork #blue-hair-accessory-left-motion {
+  rotate: var(--blue-accessory-left-inertia-rotate);
+}
+
+.tianyi-artwork #blue-hair-accessory-right-motion {
+  rotate: var(--blue-accessory-right-inertia-rotate);
+}
+
+.tianyi-artwork #white-hair-accessory-left-motion {
+  rotate: var(--white-accessory-left-inertia-rotate);
+}
+
+.tianyi-artwork #white-hair-accessory-right-motion {
+  rotate: var(--white-accessory-right-inertia-rotate);
+}
+
+.pet-shell:not(.is-sleeping) :is(
+    #hair-tail-left,
+    #hair-tail-right,
+    #fringe,
+    #temple-left,
+    #temple-right,
+    #blue-hair-accessory-left,
+    #blue-hair-accessory-right,
+    #white-hair-accessory-left,
+    #white-hair-accessory-right
+  ) {
+  animation: pet-pivot-hair-sway var(--hair-idle-duration) ease-in-out
+    var(--hair-idle-delay) infinite;
 }
 
 .tianyi-artwork #eye-left,
@@ -245,23 +281,13 @@ body,
   }
 }
 
-@keyframes pet-hair-sway-left {
+@keyframes pet-pivot-hair-sway {
   0%,
   100% {
-    transform: rotate(-1.2deg);
+    rotate: var(--hair-idle-from);
   }
   50% {
-    transform: rotate(1.2deg);
-  }
-}
-
-@keyframes pet-hair-sway-right {
-  0%,
-  100% {
-    transform: rotate(1.2deg);
-  }
-  50% {
-    transform: rotate(-1.2deg);
+    rotate: var(--hair-idle-to);
   }
 }
 
@@ -369,14 +395,37 @@ body,
 
 @media (prefers-reduced-motion: reduce) {
   .pet-breathe,
-  .pet-shell:not(.is-sleeping) #hair-tail-left,
-  .pet-shell:not(.is-sleeping) #hair-tail-right,
+  .pet-shell:not(.is-sleeping) :is(
+      #hair-tail-left,
+      #hair-tail-right,
+      #fringe,
+      #temple-left,
+      #temple-right,
+      #blue-hair-accessory-left,
+      #blue-hair-accessory-right,
+      #white-hair-accessory-left,
+      #white-hair-accessory-right
+    ),
   .pet-shell:not(.is-sleeping) #arm-left,
   .pet-shell:not(.is-sleeping) #arm-right-motion,
   .pet-shell[data-action="wave"] #arm-right-foreground-motion,
   .pet-shell:not(.is-sleeping) #tie,
   .expression-speak #mouth {
     animation: none;
+  }
+
+  .tianyi-artwork :is(
+      #hair-tail-left-motion,
+      #hair-tail-right-motion,
+      #fringe-motion,
+      #temple-left-motion,
+      #temple-right-motion,
+      #blue-hair-accessory-left-motion,
+      #blue-hair-accessory-right-motion,
+      #white-hair-accessory-left-motion,
+      #white-hair-accessory-right-motion
+    ) {
+    rotate: 0deg;
   }
 
   .tianyi-artwork #eye-left,
@@ -387,6 +436,10 @@ body,
   .tianyi-artwork #rouge,
   .tianyi-artwork #body,
   .tianyi-artwork #head,
+  .tianyi-artwork #hair-tail-left-head-follow,
+  .tianyi-artwork #hair-tail-right-head-follow,
+  .tianyi-artwork #hair-tail-left-motion,
+  .tianyi-artwork #hair-tail-right-motion,
   .tianyi-artwork #arm-left-follow,
   .tianyi-artwork #arm-right-follow,
   .tianyi-artwork #arm-right-foreground-follow {

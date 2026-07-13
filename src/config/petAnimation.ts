@@ -28,15 +28,43 @@ export const PET_ANIMATION_CONFIG = {
       maxRotateDeg: 0.45,
       leftRestOffsetY: -0.35,
     },
-    // 马尾的鼠标视差；拖动惯性会在此基础上继续叠加。
-    hairTail: { maxOffsetX: 0.9, maxOffsetY: 0.5, maxRotateDeg: 1 },
+    // 马尾只绕 SVG 中各自的 pivot 转动，不再使用整体位移制造视差。
+    hairTail: { maxRotateDeg: 1 },
   },
-  /** 拖动速度驱动的双马尾阻尼弹簧。位移单位 px，速度单位 px/ms。 */
-  tailInertia: {
-    // 快速拖动时允许达到的最大反向滞后距离和旋转角度。
-    maxOffsetX: 5,
-    maxOffsetY: 2.2,
-    maxRotateDeg: 7,
+  /** 基于各 SVG pivot 的头发运动。角度单位 deg，时间单位 ms。 */
+  hairMotion: {
+    // 光标移动超过此屏幕距离后才视为拖动，避免普通单击被误判。
+    dragThresholdPx: 3,
+    // 各部件的待机摆幅、周期与起始延迟；左右错相避免机械同步。
+    idle: {
+      tail: {
+        maxRotateDeg: 1.2,
+        durationMs: 4_400,
+        leftDelayMs: 0,
+        rightDelayMs: -2_200,
+      },
+      fringe: { maxRotateDeg: 0.35, durationMs: 3_800, delayMs: -650 },
+      temple: {
+        maxRotateDeg: 0.55,
+        durationMs: 4_200,
+        leftDelayMs: -1_100,
+        rightDelayMs: -2_800,
+      },
+      blueAccessory: {
+        maxRotateDeg: 0.75,
+        durationMs: 3_400,
+        leftDelayMs: -350,
+        rightDelayMs: -1_850,
+      },
+      whiteAccessory: {
+        maxRotateDeg: 0.55,
+        durationMs: 3_800,
+        leftDelayMs: -1_250,
+        rightDelayMs: -250,
+      },
+    },
+    // 快速拖动时马尾允许达到的最大反向旋转角度。
+    maxInertiaRotateDeg: 7,
     // 达到最大惯性幅度所需的鼠标速度；越小越容易甩动。
     velocityForMaxPxPerMs: 1.1,
     // stiffness 越大回弹越快，damping 越大回摆次数越少。
@@ -44,8 +72,15 @@ export const PET_ANIMATION_CONFIG = {
     damping: 15,
     // 拖动速度停止后，惯性目标每秒衰减速度。
     targetDecayPerSecond: 9,
-    // 右马尾相对左马尾的旋转比例，避免两边完全机械同步。
-    rightTailRotationRatio: 0.9,
+    // 各部件使用同一弹簧，但按比例降低响应强度。
+    inertiaRatio: {
+      tailLeft: 1,
+      tailRight: 0.9,
+      fringe: 0.12,
+      temple: 0.22,
+      blueAccessory: 0.3,
+      whiteAccessory: 0.24,
+    },
   },
   /** 双耳同步随机微动；间隔和持续时间单位 ms，位移单位 px。 */
   earTwitch: {
