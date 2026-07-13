@@ -15,9 +15,9 @@ export const PET_ANIMATION_CONFIG = {
     // 头部探出幅度最大；上下独立配置，旋转中心使用 SVG 中的 pivot_head。
     head: {
       maxOffsetX: 1.8,
-      maxOffsetUp: 0.55,
-      maxOffsetDown: 0.8,
-      maxRotateDeg: 2.2,
+      maxOffsetUp: 0.45,
+      maxOffsetDown: 1.5,
+      maxRotateDeg: 4,
     },
     // 身体只做克制的倾斜，双腿始终固定不参与跟随。
     body: { maxOffsetX: 0.55, maxOffsetY: 0.3, maxRotateDeg: 0.75 },
