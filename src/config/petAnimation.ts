@@ -1,7 +1,15 @@
 export const PET_ANIMATION_CONFIG = {
   /** 鼠标位置驱动的分层跟随。所有 maxOffset 均为 CSS 像素。 */
   pointerFollow: {
-    // 鼠标距离角色中心达到此值时，对应方向的动作幅度达到上限。
+    // 鼠标位于此点时角色正视屏幕。比例相对 pet-shell，offset 用于素材级微调（CSS px）。
+    // 当前 y = 50% + 2px，约等于“小洛宝”双眼正中间。
+    neutralPoint: {
+      xRatio: 0.5,
+      yRatio: 0.5,
+      offsetX: 0,
+      offsetY: 2,
+    },
+    // 鼠标距离上述正视锚点达到此值时，对应方向的动作幅度达到上限。
     fullRangeX: 150,
     fullRangeY: 120,
     // CSS 跟随补间时间；越大越柔和，但也会更迟钝。

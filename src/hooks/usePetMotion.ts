@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { cursorPosition, getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { PET_ANIMATION_CONFIG } from "../config/petAnimation";
 import {
   normalizeDragVelocity,
   scaleHairRotation,
 } from "../motion/hairMotionMath";
+import { physicalCursorToCssPoint } from "../motion/petInteractionMath";
+import {
+  getPointerDirection,
+  getPointerNeutralPoint,
+} from "../motion/pointerFollowMath";
 
 type PetElementRef = RefObject<HTMLDivElement | null>;
-
-const clamp = (value: number, min: number, max: number) =>
-  Math.max(min, Math.min(max, value));
 
 const px = (value: number) => `${value.toFixed(2)}px`;
 const deg = (value: number) => `${value.toFixed(2)}deg`;
@@ -21,6 +23,7 @@ export const usePointerFollow = (
 ) => {
   // 全局模式下需要跟踪窗口位置，用于屏幕坐标 → 视口坐标转换
   const winPosRef = useRef({ x: 0, y: 0 });
+  const scaleFactorRef = useRef(1);
   const petElementRef = useRef(petElement);
   petElementRef.current = petElement;
   const config = PET_ANIMATION_CONFIG.pointerFollow;
@@ -29,6 +32,8 @@ export const usePointerFollow = (
     let animationFrame: number | undefined;
     let pointerX = 0;
     let pointerY = 0;
+    let hasPointerSample = false;
+    let globalCoordinatesReady = mode !== "global";
 
     petElementRef.current.current?.style.setProperty(
       "--arm-left-rest-y",
@@ -49,23 +54,28 @@ export const usePointerFollow = (
 
       // 全局模式下，屏幕坐标 → 视口坐标
       if (mode === "global") {
-        localX = pointerX - winPosRef.current.x;
-        localY = pointerY - winPosRef.current.y;
+        const localPoint = physicalCursorToCssPoint(
+          { x: pointerX, y: pointerY },
+          winPosRef.current,
+          scaleFactorRef.current,
+        );
+        localX = localPoint.x;
+        localY = localPoint.y;
       }
 
       const bounds = pet.getBoundingClientRect();
-      const centerX = bounds.left + bounds.width / 2;
-      const centerY = bounds.top + bounds.height * 0.34;
-      const directionX = clamp(
-        (localX - centerX) / config.fullRangeX,
-        -1,
-        1,
+      const neutralPoint = getPointerNeutralPoint(
+        bounds,
+        config.neutralPoint,
       );
-      const directionY = clamp(
-        (localY - centerY) / config.fullRangeY,
-        -1,
-        1,
+      const direction = getPointerDirection(
+        { x: localX, y: localY },
+        neutralPoint,
+        config.fullRangeX,
+        config.fullRangeY,
       );
+      const directionX = direction.x;
+      const directionY = direction.y;
 
       const set = (name: string, value: string) =>
         pet.style.setProperty(name, value);
@@ -101,34 +111,66 @@ export const usePointerFollow = (
       );
     };
 
+    const scheduleUpdate = () => {
+      if (animationFrame === undefined) {
+        animationFrame = window.requestAnimationFrame(updatePosition);
+      }
+    };
+
     if (mode === "global") {
       // 全局模式：监听 Tauri 事件（屏幕绝对坐标）
       const win = getCurrentWindow();
+      let disposed = false;
+      const unlisteners: Array<() => void> = [];
+      const registerUnlistener = (unlisten: () => void) => {
+        if (disposed) unlisten();
+        else unlisteners.push(unlisten);
+      };
 
-      // 初始获取窗口位置
-      win.outerPosition().then((pos) => {
-        winPosRef.current = { x: pos.x, y: pos.y };
-      });
-      // 窗口移动时更新
-      let unlistenMove: () => void;
-      win.onMoved((event) => {
+      // 窗口位置和全局光标均为物理像素，必须同时读取 DPI 后再换算。
+      void Promise.all([
+        win.outerPosition(),
+        win.scaleFactor(),
+        cursorPosition(),
+      ]).then(
+        ([pos, scaleFactor, cursor]) => {
+          if (disposed) return;
+          winPosRef.current = { x: pos.x, y: pos.y };
+          scaleFactorRef.current = scaleFactor;
+          if (!hasPointerSample) {
+            pointerX = cursor.x;
+            pointerY = cursor.y;
+            hasPointerSample = true;
+          }
+          globalCoordinatesReady = true;
+          scheduleUpdate();
+        },
+        (error) => {
+          console.error("初始化鼠标跟随坐标失败:", error);
+        },
+      );
+      void win.onMoved((event) => {
         winPosRef.current = { x: event.payload.x, y: event.payload.y };
-      }).then((fn) => { unlistenMove = fn; });
+        if (globalCoordinatesReady && hasPointerSample) scheduleUpdate();
+      }).then(registerUnlistener);
+      void win.onScaleChanged((event) => {
+        scaleFactorRef.current = event.payload.scaleFactor;
+        if (globalCoordinatesReady && hasPointerSample) scheduleUpdate();
+      }).then(registerUnlistener);
 
-      const unlistenEvent = listen<{ x: number; y: number }>(
+      void listen<{ x: number; y: number }>(
         "global-cursor-move",
         (event) => {
           pointerX = event.payload.x;
           pointerY = event.payload.y;
-          if (animationFrame === undefined) {
-            animationFrame = window.requestAnimationFrame(updatePosition);
-          }
+          hasPointerSample = true;
+          if (globalCoordinatesReady) scheduleUpdate();
         },
-      );
+      ).then(registerUnlistener);
 
       return () => {
-        unlistenEvent.then((fn) => fn());
-        if (unlistenMove) unlistenMove();
+        disposed = true;
+        unlisteners.forEach((unlisten) => unlisten());
         if (animationFrame !== undefined) {
           window.cancelAnimationFrame(animationFrame);
         }
@@ -139,9 +181,8 @@ export const usePointerFollow = (
     const handlePointerMove = (event: PointerEvent) => {
       pointerX = event.clientX;
       pointerY = event.clientY;
-      if (animationFrame === undefined) {
-        animationFrame = window.requestAnimationFrame(updatePosition);
-      }
+      hasPointerSample = true;
+      scheduleUpdate();
     };
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
