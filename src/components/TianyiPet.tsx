@@ -17,6 +17,12 @@ import {
   distanceBetweenPoints,
   exceedsDragThreshold,
 } from "../motion/petInteractionMath";
+import { BehaviorScheduler } from "../domain/scheduler/scheduler";
+import { getDefaultChannel } from "../domain/scheduler/channelPolicy";
+import { PetActionExecutor } from "../domain/controllers/executor";
+import { SvgCharacterRenderer } from "../controllers/SvgCharacterRenderer";
+import { TauriWindowController } from "../controllers/TauriWindowController";
+import type { ActionRequest } from "../domain/actions/types";
 
 // 天依的核心动画状态
 type PetState = "idle" | "blink" | "listen" | "speak" | "sleep" | "drag";
@@ -36,22 +42,49 @@ const getExpression = (state: PetState): PetExpression => {
 const TianyiPet = () => {
   const [state, setState] = useState<PetState>("idle");
   const [action, setAction] = useState<PetAction>("none");
+  const [expression, setExpression] = useState<PetExpression>(getExpression("idle"));
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const petElement = useRef<HTMLDivElement>(null);
   const contextMenuOpenRef = useRef(false);
   const hasDragged = useRef(false);
   const restoreStateTimer = useRef<number | undefined>(undefined);
+
+  // --- Create runtime (scheduler + executor + renderer + windowController) ---
+  const runtimeRef = useRef<{
+    scheduler: BehaviorScheduler;
+    executor: PetActionExecutor;
+    renderer: SvgCharacterRenderer;
+    windowController: TauriWindowController;
+  } | null>(null);
+
+  if (!runtimeRef.current) {
+    const renderer = new SvgCharacterRenderer({
+      element: petElement,
+      onActionChange: (a) => setAction(a),
+      onExpressionChange: (e) => setExpression(e),
+    });
+    const windowController = new TauriWindowController();
+    const executor = new PetActionExecutor({ renderer, windowController });
+    const scheduler = new BehaviorScheduler({ executor });
+    runtimeRef.current = { scheduler, executor, renderer, windowController };
+  }
+  const { scheduler } = runtimeRef.current;
+
+  // Keep hooks as-is
   usePointerFollow(petElement, "global");
   useEarTwitch(petElement);
   const { beginDrag: beginHairDrag, endDrag: endHairDrag } =
     useHairMotion(petElement);
+
+  // --- Drag end handler: now also resumes agent actions ---
   const handleWindowDragEnd = useCallback(
     (didDrag: boolean) => {
       hasDragged.current = didDrag;
       endHairDrag();
       setState("idle");
+      scheduler.resumeAgentActions();
     },
-    [endHairDrag],
+    [endHairDrag, scheduler],
   );
   const windowDrag = useWindowDrag({ onEnd: handleWindowDragEnd });
   useClickThrough(petElement, {
@@ -60,14 +93,14 @@ const TianyiPet = () => {
   });
 
   // idle 动画循环 — 随机眨眼，并在短暂动作结束后恢复原状态。
+  // After refactor: expression is a separate state, set directly.
   useEffect(() => {
     if (state !== "idle" && state !== "listen") return;
 
-    const restingState = state;
     const blinkTimer = window.setTimeout(() => {
-      setState("blink");
+      setExpression("blink");
       restoreStateTimer.current = window.setTimeout(() => {
-        setState(restingState);
+        setExpression("normal");
       }, 180);
     }, 3000 + Math.random() * 2000);
 
@@ -83,8 +116,24 @@ const TianyiPet = () => {
     [],
   );
 
+  // --- Cleanup runtime on unmount ---
+  // StrictMode 会挂载→卸载→重新挂载；useRef 保留同一实例。
+  // 如果在 cleanup 中 dispose，重新挂载后调度器已释放，submit 会抛错。
+  // 因此 cleanup 只取消所有动作，不释放运行时；真正的资源由 GC 回收。
+  useEffect(() => {
+    const runtime = runtimeRef.current;
+    return () => {
+      runtime?.scheduler.cancelAll();
+    };
+  }, []);
+
   const handleMouseDown = async (event: React.MouseEvent) => {
     if (event.button !== 0) return;
+
+    // Cancel any autonomous movement and pause agent actions during drag
+    scheduler.cancelChannel("locomotion");
+    scheduler.pauseAgentActions();
+
     setAction("none");
     setState("drag");
     hasDragged.current = false;
@@ -112,6 +161,7 @@ const TianyiPet = () => {
       hasDragged.current = fallbackDidDrag;
       endHairDrag();
       setState("idle");
+      scheduler.resumeAgentActions();
     }
   };
 
@@ -120,6 +170,7 @@ const TianyiPet = () => {
       if (contextMenuOpenRef.current) return;
       contextMenuOpenRef.current = true;
       setContextMenuOpen(true);
+      scheduler.pauseAgentActions();
 
       try {
         await invoke("show_context_menu", { position });
@@ -128,9 +179,10 @@ const TianyiPet = () => {
       } finally {
         contextMenuOpenRef.current = false;
         setContextMenuOpen(false);
+        scheduler.resumeAgentActions();
       }
     },
-    [],
+    [scheduler],
   );
 
   const handleContextMenu = (event: React.MouseEvent) => {
@@ -139,18 +191,27 @@ const TianyiPet = () => {
     void showContextMenu({ x: event.clientX, y: event.clientY });
   };
 
-  const triggerWave = () => {
+  const triggerWave = useCallback(() => {
     if (hasDragged.current) return;
-    setAction("wave");
-  };
+    const channel = getDefaultChannel("motion.play");
+    if (!channel) return;
+    const actionRequest: ActionRequest = {
+      id: `wave-${Date.now()}`,
+      type: "motion.play",
+      payload: { motion: "wave" },
+      source: "user",
+      requestedAt: Date.now(),
+    } as ActionRequest;
+    scheduler.submit(actionRequest, { channel, priority: "user" });
+  }, [scheduler]);
 
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     if (hasDragged.current) {
       hasDragged.current = false;
       return;
     }
     triggerWave();
-  };
+  }, [triggerWave]);
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     const opensContextMenu =
@@ -174,19 +235,12 @@ const TianyiPet = () => {
     triggerWave();
   };
 
-  const handleAnimationEnd = (event: React.AnimationEvent) => {
-    if (event.animationName === "pet-wave") {
-      setAction("none");
-    }
-  };
-
   return (
     <div
       ref={petElement}
       aria-label="小洛宝，按回车招手，按菜单键打开菜单"
       className={`pet-shell${state === "sleep" ? " is-sleeping" : ""}`}
       data-action={action}
-      onAnimationEnd={handleAnimationEnd}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       onMouseDown={handleMouseDown}
@@ -197,7 +251,7 @@ const TianyiPet = () => {
       }}
       tabIndex={0}
     >
-      <TianyiArtwork action={action} expression={getExpression(state)} />
+      <TianyiArtwork action={action} expression={expression} />
     </div>
   );
 };
