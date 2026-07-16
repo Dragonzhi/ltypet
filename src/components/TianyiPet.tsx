@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { cursorPosition, getCurrentWindow } from "@tauri-apps/api/window";
 import TianyiArtwork, {
@@ -12,16 +12,16 @@ import {
 } from "../hooks/usePetMotion";
 import { useClickThrough } from "../hooks/useClickThrough";
 import { useWindowDrag } from "../hooks/useWindowDrag";
+import {
+  PetRuntimeProvider,
+  usePetRuntime,
+} from "../hooks/usePetRuntime";
 import { PET_INTERACTION_CONFIG } from "../config/petInteraction";
 import {
   distanceBetweenPoints,
   exceedsDragThreshold,
 } from "../motion/petInteractionMath";
-import { BehaviorScheduler } from "../domain/scheduler/scheduler";
 import { getDefaultChannel } from "../domain/scheduler/channelPolicy";
-import { PetActionExecutor } from "../domain/controllers/executor";
-import { SvgCharacterRenderer } from "../controllers/SvgCharacterRenderer";
-import { TauriWindowController } from "../controllers/TauriWindowController";
 import type { ActionRequest } from "../domain/actions/types";
 
 // 天依的核心动画状态
@@ -32,43 +32,61 @@ interface ContextMenuPosition {
   y: number;
 }
 
-const getExpression = (state: PetState): PetExpression => {
-  if (state === "blink") return "blink";
-  if (state === "speak") return "speak";
-  if (state === "sleep") return "sleep";
-  return "normal";
+interface TianyiPetInnerProps {
+  action: PetAction;
+  expression: PetExpression;
+  setAction: (action: PetAction) => void;
+  setExpression: (expression: PetExpression) => void;
+  children?: ReactNode;
+}
+
+const TianyiPetInner = ({
+  action,
+  expression,
+  setAction,
+  setExpression,
+  children,
+}: TianyiPetInnerProps) => {
+  const petElement = useRef<HTMLDivElement>(null);
+
+  return (
+    <PetRuntimeProvider
+      binding={{ petElement, setAction, setExpression }}
+    >
+      <TianyiPetInnerContent
+        action={action}
+        expression={expression}
+        setAction={setAction}
+        setExpression={setExpression}
+        petElement={petElement}
+      />
+      {children}
+    </PetRuntimeProvider>
+  );
 };
 
-const TianyiPet = () => {
+interface TianyiPetInnerContentProps {
+  action: PetAction;
+  expression: PetExpression;
+  setAction: (action: PetAction) => void;
+  setExpression: (expression: PetExpression) => void;
+  petElement: React.RefObject<HTMLDivElement | null>;
+}
+
+const TianyiPetInnerContent = ({
+  action,
+  expression,
+  setAction,
+  setExpression,
+  petElement,
+}: TianyiPetInnerContentProps) => {
   const [state, setState] = useState<PetState>("idle");
-  const [action, setAction] = useState<PetAction>("none");
-  const [expression, setExpression] = useState<PetExpression>(getExpression("idle"));
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
-  const petElement = useRef<HTMLDivElement>(null);
   const contextMenuOpenRef = useRef(false);
   const hasDragged = useRef(false);
   const restoreStateTimer = useRef<number | undefined>(undefined);
 
-  // --- Create runtime (scheduler + executor + renderer + windowController) ---
-  const runtimeRef = useRef<{
-    scheduler: BehaviorScheduler;
-    executor: PetActionExecutor;
-    renderer: SvgCharacterRenderer;
-    windowController: TauriWindowController;
-  } | null>(null);
-
-  if (!runtimeRef.current) {
-    const renderer = new SvgCharacterRenderer({
-      element: petElement,
-      onActionChange: (a) => setAction(a),
-      onExpressionChange: (e) => setExpression(e),
-    });
-    const windowController = new TauriWindowController();
-    const executor = new PetActionExecutor({ renderer, windowController });
-    const scheduler = new BehaviorScheduler({ executor });
-    runtimeRef.current = { scheduler, executor, renderer, windowController };
-  }
-  const { scheduler } = runtimeRef.current;
+  const { scheduler } = usePetRuntime();
 
   // Keep hooks as-is
   usePointerFollow(petElement, "global");
@@ -93,7 +111,6 @@ const TianyiPet = () => {
   });
 
   // idle 动画循环 — 随机眨眼，并在短暂动作结束后恢复原状态。
-  // After refactor: expression is a separate state, set directly.
   useEffect(() => {
     if (state !== "idle" && state !== "listen") return;
 
@@ -105,7 +122,7 @@ const TianyiPet = () => {
     }, 3000 + Math.random() * 2000);
 
     return () => window.clearTimeout(blinkTimer);
-  }, [state]);
+  }, [state, setExpression]);
 
   useEffect(
     () => () => {
@@ -116,21 +133,16 @@ const TianyiPet = () => {
     [],
   );
 
-  // --- Cleanup runtime on unmount ---
-  // StrictMode 会挂载→卸载→重新挂载；useRef 保留同一实例。
-  // 如果在 cleanup 中 dispose，重新挂载后调度器已释放，submit 会抛错。
-  // 因此 cleanup 只取消所有动作，不释放运行时；真正的资源由 GC 回收。
+  // --- Cleanup on unmount: cancel all, don't dispose (StrictMode safe) ---
   useEffect(() => {
-    const runtime = runtimeRef.current;
     return () => {
-      runtime?.scheduler.cancelAll();
+      scheduler.cancelAll();
     };
-  }, []);
+  }, [scheduler]);
 
   const handleMouseDown = async (event: React.MouseEvent) => {
     if (event.button !== 0) return;
 
-    // Cancel any autonomous movement and pause agent actions during drag
     scheduler.cancelChannel("locomotion");
     scheduler.pauseAgentActions();
 
@@ -140,7 +152,6 @@ const TianyiPet = () => {
     beginHairDrag(event.screenX, event.screenY);
     if (windowDrag.beginDrag(event.screenX, event.screenY)) return;
 
-    // 初始化尚未完成时保留系统拖动作为降级路径。
     let fallbackDidDrag = false;
     try {
       const [cursor, factor] = await Promise.all([
@@ -253,6 +264,26 @@ const TianyiPet = () => {
     >
       <TianyiArtwork action={action} expression={expression} />
     </div>
+  );
+};
+
+interface TianyiPetProps {
+  children?: ReactNode;
+}
+
+const TianyiPet = ({ children }: TianyiPetProps) => {
+  const [action, setAction] = useState<PetAction>("none");
+  const [expression, setExpression] = useState<PetExpression>("normal");
+
+  return (
+    <TianyiPetInner
+      action={action}
+      expression={expression}
+      setAction={setAction}
+      setExpression={setExpression}
+    >
+      {children}
+    </TianyiPetInner>
   );
 };
 

@@ -2,6 +2,7 @@
 use serde::Deserialize;
 use std::sync::OnceLock;
 use tauri::menu::{CheckMenuItemBuilder, MenuBuilder, MenuEvent, MenuItemBuilder};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{Emitter, LogicalPosition, Manager};
 use windows::Win32::Foundation::{LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::UI::WindowsAndMessaging::{
@@ -13,12 +14,15 @@ static APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
 
 const MENU_TOGGLE_ALWAYS_ON_TOP: &str = "toggle-always-on-top";
 const MENU_CENTER_WINDOW: &str = "center-window";
+const MENU_SHOW_WINDOW: &str = "show-window";
 const MENU_EXIT: &str = "exit";
+const TRAY_ID: &str = "main-tray";
 
 #[derive(Debug, PartialEq, Eq)]
 enum WindowMenuAction {
     ToggleAlwaysOnTop,
     CenterWindow,
+    ShowWindow,
     Exit,
 }
 
@@ -26,6 +30,7 @@ fn window_menu_action(menu_id: &str) -> Option<WindowMenuAction> {
     match menu_id {
         MENU_TOGGLE_ALWAYS_ON_TOP => Some(WindowMenuAction::ToggleAlwaysOnTop),
         MENU_CENTER_WINDOW => Some(WindowMenuAction::CenterWindow),
+        MENU_SHOW_WINDOW => Some(WindowMenuAction::ShowWindow),
         MENU_EXIT => Some(WindowMenuAction::Exit),
         _ => None,
     }
@@ -132,8 +137,14 @@ fn handle_window_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
     let Some(action) = window_menu_action(event.id().as_ref()) else {
         return;
     };
+
+    if action == WindowMenuAction::Exit {
+        app.exit(0);
+        return;
+    }
+
     let Some(window) = app.get_webview_window("main") else {
-        eprintln!("无法处理右键菜单：主窗口不存在");
+        eprintln!("无法处理菜单：主窗口不存在");
         return;
     };
 
@@ -142,12 +153,62 @@ fn handle_window_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
             .is_always_on_top()
             .and_then(|is_always_on_top| window.set_always_on_top(!is_always_on_top)),
         WindowMenuAction::CenterWindow => window.center(),
-        WindowMenuAction::Exit => window.close(),
+        WindowMenuAction::ShowWindow => window.show().and_then(|_| window.unminimize()),
+        WindowMenuAction::Exit => unreachable!("退出操作已提前处理"),
     };
 
     if let Err(error) = result {
         eprintln!("执行右键菜单操作失败：{error}");
     }
+}
+
+fn show_main_window(app: &tauri::AppHandle) {
+    let Some(window) = app.get_webview_window("main") else {
+        eprintln!("无法显示小洛宝：主窗口不存在");
+        return;
+    };
+
+    if let Err(error) = window.show().and_then(|_| window.unminimize()) {
+        eprintln!("显示小洛宝失败：{error}");
+    }
+}
+
+fn create_tray(app: &tauri::App) -> tauri::Result<()> {
+    let show_item = MenuItemBuilder::new("显示小洛宝")
+        .id(MENU_SHOW_WINDOW)
+        .build(app)?;
+    let exit_item = MenuItemBuilder::new("退出小洛宝")
+        .id(MENU_EXIT)
+        .build(app)?;
+    let menu = MenuBuilder::new(app)
+        .item(&show_item)
+        .separator()
+        .item(&exit_item)
+        .build()?;
+
+    let mut builder = TrayIconBuilder::with_id(TRAY_ID)
+        .menu(&menu)
+        .tooltip("小洛宝")
+        .show_menu_on_left_click(false)
+        .on_tray_icon_event(|tray, event| {
+            if matches!(
+                event,
+                TrayIconEvent::Click {
+                    button: MouseButton::Left,
+                    button_state: MouseButtonState::Up,
+                    ..
+                }
+            ) {
+                show_main_window(tray.app_handle());
+            }
+        });
+
+    if let Some(icon) = app.default_window_icon() {
+        builder = builder.icon(icon.clone());
+    }
+
+    builder.build(app)?;
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -159,9 +220,7 @@ pub fn run() {
                 .with_shortcut("Ctrl+Shift+Q")
                 .expect("failed to register shortcut")
                 .with_handler(|app, _, _| {
-                    if let Some(win) = app.get_webview_window("main") {
-                        let _ = win.close();
-                    }
+                    app.exit(0);
                 })
                 .build(),
         )
@@ -173,6 +232,7 @@ pub fn run() {
             show_context_menu
         ])
         .setup(|app| {
+            create_tray(app)?;
             let app_handle = app.handle().clone();
             // 启动全局鼠标钩子（追踪全局鼠标位置与左键释放）。
             start_global_mouse_hook(app_handle);
@@ -186,7 +246,7 @@ pub fn run() {
 mod tests {
     use super::{
         is_left_button_up, window_menu_action, WindowMenuAction, MENU_CENTER_WINDOW, MENU_EXIT,
-        MENU_TOGGLE_ALWAYS_ON_TOP,
+        MENU_SHOW_WINDOW, MENU_TOGGLE_ALWAYS_ON_TOP,
     };
     use windows::Win32::UI::WindowsAndMessaging::{WM_LBUTTONUP, WM_MOUSEMOVE};
 
@@ -205,6 +265,10 @@ mod tests {
         assert_eq!(
             window_menu_action(MENU_CENTER_WINDOW),
             Some(WindowMenuAction::CenterWindow)
+        );
+        assert_eq!(
+            window_menu_action(MENU_SHOW_WINDOW),
+            Some(WindowMenuAction::ShowWindow)
         );
         assert_eq!(window_menu_action(MENU_EXIT), Some(WindowMenuAction::Exit));
         assert_eq!(window_menu_action("unknown"), None);
