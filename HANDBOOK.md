@@ -50,6 +50,7 @@
 ### 角色与桌面体验
 
 - [ ] 更多短动作和状态：打哈欠、伸懒腰、听歌律动、表情反应。
+- [ ] 基于 SVG-edit/svgcanvas 的 Flash 风格 Animation Studio，用图层、pivot、时间轴和关键帧制作命名动作；完整方案见 [`docs/SVG动画编辑器方案.md`](./docs/SVG动画编辑器方案.md)。
 - [ ] 双击交互和轻量对话入口。
 - [ ] 音符、星光等克制的粒子效果，并提供减少动态效果降级。
 - [ ] 窗口边缘和任务栏吸附。
@@ -73,7 +74,7 @@
 - 保持小型透明原生窗口，不使用覆盖整个屏幕的透明 WebView。
 - 桌面移动通过移动 Tauri 原生窗口实现，角色不在固定窗口内部无限平移。
 - 点击穿透按 SVG 可见轮廓动态切换，而不是让整窗永久穿透。
-- 角色表现通过适配层与行为系统解耦；当前仍以分层 SVG、pivot 和 CSS/JS 小型运动系统实现，未来是否迁移到 Rive 或 Spine 必须先按 `计划.md` 完成同规格原型验证，产品行为不能直接依赖某个渲染器的内部结构。
+- 角色表现通过适配层与行为系统解耦；生产方向保持分层 SVG，并计划以 SVG-edit/svgcanvas 为画布内核开发专用 Animation Studio。编辑器导出 rig/motion 数据，产品行为仍不得依赖编辑器或渲染器内部结构。
 - 纸片关节轻微分离、四肢或马尾与身体短暂脱开可以作为风格特征，但连接点和层级切换不应产生明显跳变。
 - 番茄钟、持久化和系统感知等可靠性能力放在原生层；角色视觉与短时交互留在前端。
 - 所有联网、音频与系统感知能力必须可选，并保证基础桌宠离线可用。
@@ -86,6 +87,7 @@
 | [Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk) | 轻量 SVG 桌宠和 Agent 交互气质 |
 | [Desktop Pet Framework](https://github.com/solt-frfr/desktop-pet-framework) | 桌宠动作与状态机 |
 | [OpenPet](https://github.com/X-T-E-R/OpenPet) | Tauri 透明窗口与外部控制 |
+| [SVG-edit](https://github.com/SVG-Edit/svgedit) | Animation Studio 的 SVG 画布、选择、变换和基础编辑内核 |
 | BongoCat | 大规模用户验证过的透明窗口渲染思路 |
 
 参考架构思想即可。复制外部代码、美术、字体或音频前必须核对许可证；洛天依角色、公式服和衍生素材还需遵守对应 IP 与二次创作规范。仓库中的角色素材应保留来源与可编辑原稿，未来公开发布前单独完成授权审查。
