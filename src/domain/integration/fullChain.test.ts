@@ -56,7 +56,7 @@ class FakeWindowController implements WindowController {
   private moveResolver: (() => void) | null = null;
   disposed = false;
 
-  async moveTo(target: WindowTarget, options?: { durationMs?: number }): Promise<void> {
+  async moveTo(target: WindowTarget, options?: { durationMs?: number; signal?: AbortSignal }): Promise<void> {
     this.calls.push({ method: "moveTo", args: [target, options] });
     return new Promise<void>((resolve) => { this.moveResolver = resolve; });
   }

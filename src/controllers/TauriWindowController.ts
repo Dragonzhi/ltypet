@@ -1,50 +1,105 @@
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
 import { getCurrentWindow, currentMonitor } from "@tauri-apps/api/window";
-import type { WindowController } from "../domain/controllers/types";
-import type { WindowTarget, WindowSemanticPosition } from "../domain/actions/types";
+import { invoke } from "@tauri-apps/api/core";
+import type { WindowController, WindowMoveOptions } from "../domain/controllers/types";
+import type { WindowTarget } from "../domain/actions/types";
+import { WINDOW_MOVE_CONFIG } from "../config/windowMove";
+import {
+  resolveTarget,
+  clampToWorkArea,
+  computeDuration,
+  interpolatePosition,
+  distance,
+  type Rect,
+  type Point,
+  type Size,
+} from "../motion/windowMoveMath";
+
+interface WorkAreaResponse {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
 
 export class TauriWindowController implements WindowController {
   private disposed = false;
+  private currentAnimation: { abort: AbortController } | null = null;
 
   constructor() {
-    // No initialization needed for M3
+    // No initialization needed
   }
 
-  async moveTo(target: WindowTarget, _options?: { durationMs?: number }): Promise<void> {
+  async moveTo(
+    target: WindowTarget,
+    options?: WindowMoveOptions,
+  ): Promise<void> {
     if (this.disposed) throw new Error("窗口控制器已释放");
 
-    const window = getCurrentWindow();
+    // Latest-wins: cancel any ongoing animation
+    this.cancelCurrentAnimation();
 
-    if (target.kind === "semantic") {
-      const monitor = await currentMonitor();
-      if (!monitor) {
-        // No monitor detected; center as fallback
-        await window.center();
-        return;
-      }
+    const win = getCurrentWindow();
+    const winSize = await win.outerSize();
+    const winSizeObj: Size = { width: winSize.width, height: winSize.height };
 
-      const winSize = await window.outerSize();
-      const pos = calculateSemanticPosition(
-        target.position,
-        { x: monitor.position.x, y: monitor.position.y },
-        { width: monitor.size.width, height: monitor.size.height },
-        { width: winSize.width, height: winSize.height },
-      );
-
-      await window.setPosition(new PhysicalPosition(Math.round(pos.x), Math.round(pos.y)));
-    } else if (target.kind === "normalized") {
-      const monitor = await currentMonitor();
-      if (!monitor) {
-        await window.center();
-        return;
-      }
-
-      const winSize = await window.outerSize();
-      const x = monitor.position.x + target.x * (monitor.size.width - winSize.width);
-      const y = monitor.position.y + target.y * (monitor.size.height - winSize.height);
-
-      await window.setPosition(new PhysicalPosition(Math.round(x), Math.round(y)));
+    // Get work area (with fallback to currentMonitor)
+    const workArea = await this.getWorkArea();
+    if (!workArea) {
+      // No monitor detected; center as fallback
+      await win.center();
+      return;
     }
+
+    // Resolve target to physical position
+    const rawEnd = resolveTarget(target, workArea, winSizeObj);
+
+    // Clamp to work area with margin
+    const end = clampToWorkArea(
+      rawEnd,
+      workArea,
+      winSizeObj,
+      WINDOW_MOVE_CONFIG.boundaryMarginPx,
+    );
+
+    // Reduced motion: instant jump
+    if (prefersReducedMotion()) {
+      await win.setPosition(
+        new PhysicalPosition(Math.round(end.x), Math.round(end.y)),
+      );
+      return;
+    }
+
+    // Get current position
+    const outerPos = await win.outerPosition();
+    const start: Point = { x: outerPos.x, y: outerPos.y };
+
+    // Compute duration with max speed cap
+    const dist = distance(start, end);
+    const requestedDuration = options?.durationMs ?? WINDOW_MOVE_CONFIG.defaultDurationMs;
+    const duration = Math.min(
+      computeDuration(dist, WINDOW_MOVE_CONFIG.maxSpeedPxPerMs, requestedDuration),
+      WINDOW_MOVE_CONFIG.maxDurationMs,
+    );
+
+    // No distance to travel
+    if (duration <= 0 || dist < 1) {
+      await win.setPosition(
+        new PhysicalPosition(Math.round(end.x), Math.round(end.y)),
+      );
+      return;
+    }
+
+    // Animate with cancellation support
+    await this.animateTo(win, start, end, duration, options?.signal);
   }
 
   async getPosition(): Promise<{ x: number; y: number }> {
@@ -63,51 +118,111 @@ export class TauriWindowController implements WindowController {
   async center(): Promise<void> {
     if (this.disposed) throw new Error("窗口控制器已释放");
 
+    this.cancelCurrentAnimation();
     await getCurrentWindow().center();
   }
 
   dispose(): void {
+    this.cancelCurrentAnimation();
     this.disposed = true;
   }
-}
 
-interface Position2D {
-  x: number;
-  y: number;
-}
+  // --- Private methods ---
 
-interface Size2D {
-  width: number;
-  height: number;
-}
+  private async getWorkArea(): Promise<Rect | null> {
+    try {
+      const area = await invoke<WorkAreaResponse>("get_work_area");
+      return { x: area.x, y: area.y, width: area.width, height: area.height };
+    } catch {
+      // Fallback: use currentMonitor (doesn't account for taskbar)
+      try {
+        const monitor = await currentMonitor();
+        if (!monitor) return null;
+        return {
+          x: monitor.position.x,
+          y: monitor.position.y,
+          width: monitor.size.width,
+          height: monitor.size.height,
+        };
+      } catch {
+        return null;
+      }
+    }
+  }
 
-function calculateSemanticPosition(
-  position: WindowSemanticPosition,
-  monitorPos: Position2D,
-  monitorSize: Size2D,
-  winSize: Size2D,
-): Position2D {
-  const centerX = monitorPos.x + (monitorSize.width - winSize.width) / 2;
-  const centerY = monitorPos.y + (monitorSize.height - winSize.height) / 2;
+  private cancelCurrentAnimation(): void {
+    if (this.currentAnimation) {
+      this.currentAnimation.abort.abort();
+      this.currentAnimation = null;
+    }
+  }
 
-  switch (position) {
-    case "center":
-      return { x: centerX, y: centerY };
-    case "top":
-      return { x: centerX, y: monitorPos.y };
-    case "bottom":
-      return { x: centerX, y: monitorPos.y + monitorSize.height - winSize.height };
-    case "left":
-      return { x: monitorPos.x, y: centerY };
-    case "right":
-      return { x: monitorPos.x + monitorSize.width - winSize.width, y: centerY };
-    case "top-left":
-      return { x: monitorPos.x, y: monitorPos.y };
-    case "top-right":
-      return { x: monitorPos.x + monitorSize.width - winSize.width, y: monitorPos.y };
-    case "bottom-left":
-      return { x: monitorPos.x, y: monitorPos.y + monitorSize.height - winSize.height };
-    case "bottom-right":
-      return { x: monitorPos.x + monitorSize.width - winSize.width, y: monitorPos.y + monitorSize.height - winSize.height };
+  private animateTo(
+    win: ReturnType<typeof getCurrentWindow>,
+    start: Point,
+    end: Point,
+    duration: number,
+    externalSignal?: AbortSignal,
+  ): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const abort = new AbortController();
+      this.currentAnimation = { abort };
+
+      // Link external signal
+      if (externalSignal) {
+        if (externalSignal.aborted) {
+          this.currentAnimation = null;
+          reject(new Error("aborted"));
+          return;
+        }
+        externalSignal.addEventListener(
+          "abort",
+          () => abort.abort(),
+          { once: true },
+        );
+      }
+
+      let rafId = 0;
+      const startTime = performance.now();
+
+      const cleanup = () => {
+        if (rafId !== 0) cancelAnimationFrame(rafId);
+        rafId = 0;
+        if (this.currentAnimation === this.currentAnimation) {
+          this.currentAnimation = null;
+        }
+      };
+
+      const onAbort = () => {
+        cleanup();
+        reject(new Error("aborted"));
+      };
+
+      abort.signal.addEventListener("abort", onAbort, { once: true });
+
+      const tick = () => {
+        if (abort.signal.aborted) return;
+
+        const elapsed = performance.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const pos = interpolatePosition(start, end, progress);
+
+        win.setPosition(
+          new PhysicalPosition(Math.round(pos.x), Math.round(pos.y)),
+        ).catch(() => {
+          // setPosition failed; abort animation
+          abort.abort();
+        });
+
+        if (progress >= 1) {
+          cleanup();
+          resolve();
+        } else {
+          rafId = requestAnimationFrame(tick);
+        }
+      };
+
+      rafId = requestAnimationFrame(tick);
+    });
   }
 }

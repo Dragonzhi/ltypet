@@ -74,7 +74,10 @@ export class PetActionExecutor implements ActionExecutor {
         }
         case "window.move": {
           await this.withAbort(
-            () => this.windowController.moveTo(action.payload.target, { durationMs: action.payload.durationMs }),
+            () => this.windowController.moveTo(
+              action.payload.target,
+              { durationMs: action.payload.durationMs, signal },
+            ),
             signal,
           );
           return { actionId: action.id, status: "completed", finishedAt: this.clock() };

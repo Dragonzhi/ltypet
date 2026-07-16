@@ -19,6 +19,7 @@ import type {
   SubmitOptions,
 } from "../domain/scheduler/types";
 import type { CapabilitySet } from "../domain/capabilities/capabilities";
+import { WINDOW_MOVE_CONFIG } from "../config/windowMove";
 import "../styles/DebugConsole.css";
 
 const ACTION_TYPES: ActionType[] = [
@@ -278,6 +279,9 @@ export default function DebugConsole(): ReactNode {
       if (actionPriority !== undefined) {
         options.priority = actionPriority;
       }
+      if (type === "window.move") {
+        options.cooldownMs = WINDOW_MOVE_CONFIG.minIntervalMs;
+      }
       scheduler.submit(result.action, options);
     }
     setValidationResult(result);
@@ -293,6 +297,9 @@ export default function DebugConsole(): ReactNode {
       const options: SubmitOptions = { channel };
       if (priority !== "auto") {
         options.priority = priority;
+      }
+      if (result.action.type === "window.move") {
+        options.cooldownMs = WINDOW_MOVE_CONFIG.minIntervalMs;
       }
       scheduler.submit(result.action, options);
     }
@@ -832,6 +839,66 @@ export default function DebugConsole(): ReactNode {
               }
             >
               回到中央
+            </button>
+            <button
+              className="debug-btn"
+              type="button"
+              onClick={() =>
+                submitAction(
+                  "window.move",
+                  {
+                    target: { kind: "semantic", position: "top-left" },
+                  },
+                  "dev",
+                )
+              }
+            >
+              移到左上
+            </button>
+            <button
+              className="debug-btn"
+              type="button"
+              onClick={() =>
+                submitAction(
+                  "window.move",
+                  {
+                    target: { kind: "semantic", position: "top-right" },
+                  },
+                  "dev",
+                )
+              }
+            >
+              移到右上
+            </button>
+            <button
+              className="debug-btn"
+              type="button"
+              onClick={() =>
+                submitAction(
+                  "window.move",
+                  {
+                    target: { kind: "semantic", position: "bottom-left" },
+                  },
+                  "dev",
+                )
+              }
+            >
+              移到左下
+            </button>
+            <button
+              className="debug-btn"
+              type="button"
+              onClick={() =>
+                submitAction(
+                  "window.move",
+                  {
+                    target: { kind: "semantic", position: "bottom-right" },
+                  },
+                  "dev",
+                )
+              }
+            >
+              移到右下
             </button>
           </div>
         </section>

@@ -31,13 +31,17 @@ export interface CharacterRenderer {
   dispose(): void;
 }
 
+// --- Window move options ---
+export interface WindowMoveOptions {
+  durationMs?: number;
+  /** AbortSignal to cancel the animation mid-flight. */
+  signal?: AbortSignal;
+}
+
 // --- Window controller interface ---
 // Abstracts native window operations so business logic never calls Tauri directly.
 export interface WindowController {
-  moveTo(
-    target: WindowTarget,
-    options?: { durationMs?: number },
-  ): Promise<void>;
+  moveTo(target: WindowTarget, options?: WindowMoveOptions): Promise<void>;
   getPosition(): Promise<{ x: number; y: number }>;
   setAlwaysOnTop(value: boolean): Promise<void>;
   center(): Promise<void>;

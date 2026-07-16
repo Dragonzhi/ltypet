@@ -73,7 +73,7 @@ class FakeWindowController {
   private moveRejecter: ((e: Error) => void) | null = null;
   disposed = false;
 
-  async moveTo(target: WindowTarget, options?: { durationMs?: number }): Promise<void> {
+  async moveTo(target: WindowTarget, options?: { durationMs?: number; signal?: AbortSignal }): Promise<void> {
     this.calls.push({ method: "moveTo", args: [target, options] });
     return new Promise<void>((resolve, reject) => {
       this.moveResolver = resolve;
@@ -267,7 +267,10 @@ describe("window.move 分发", () => {
 
     expect(ctx.windowController.calls.length).toBe(1);
     expect(ctx.windowController.calls[0].method).toBe("moveTo");
-    expect(ctx.windowController.calls[0].args).toEqual([target, { durationMs: 300 }]);
+    expect(ctx.windowController.calls[0].args[0]).toEqual(target);
+    const moveOptions = ctx.windowController.calls[0].args[1] as { durationMs?: number; signal?: AbortSignal };
+    expect(moveOptions.durationMs).toBe(300);
+    expect(moveOptions.signal).toBeDefined();
 
     ctx.windowController.completeMove();
 

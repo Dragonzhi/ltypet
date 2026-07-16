@@ -5,6 +5,9 @@ use tauri::menu::{CheckMenuItemBuilder, MenuBuilder, MenuEvent, MenuItemBuilder}
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{Emitter, LogicalPosition, Manager};
 use windows::Win32::Foundation::{LPARAM, LRESULT, POINT, WPARAM};
+use windows::Win32::Graphics::Gdi::{
+    GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+};
 use windows::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, DispatchMessageW, GetCursorPos, GetMessageW, SetWindowsHookExW,
     TranslateMessage, UnhookWindowsHookEx, HHOOK, MSG, WH_MOUSE_LL, WM_LBUTTONUP,
@@ -133,6 +136,36 @@ async fn show_context_menu(
         .map_err(|e| e.to_string())
 }
 
+#[derive(serde::Serialize)]
+struct WorkArea {
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+}
+
+#[tauri::command]
+async fn get_work_area(window: tauri::Window) -> Result<WorkArea, String> {
+    let tauri_hwnd = window.hwnd().map_err(|e| e.to_string())?;
+    // 转换 HWND：tauri 内部使用的 windows 版本可能与当前 crate 版本不同，
+    // 但两者均为 repr(transparent) 包装 *mut c_void，所以 transmute 是安全的。
+    let hwnd = unsafe { std::mem::transmute::<_, windows::Win32::Foundation::HWND>(tauri_hwnd) };
+    let monitor = unsafe { MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) };
+    let mut info = MONITORINFO::default();
+    info.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
+    let ok = unsafe { GetMonitorInfoW(monitor, &mut info) };
+    if !ok.as_bool() {
+        return Err("获取显示器工作区失败".to_string());
+    }
+    let rc = info.rcWork;
+    Ok(WorkArea {
+        x: rc.left as f64,
+        y: rc.top as f64,
+        width: (rc.right - rc.left) as f64,
+        height: (rc.bottom - rc.top) as f64,
+    })
+}
+
 fn handle_window_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
     let Some(action) = window_menu_action(event.id().as_ref()) else {
         return;
@@ -229,7 +262,8 @@ pub fn run() {
             greet,
             start_dragging,
             close_window,
-            show_context_menu
+            show_context_menu,
+            get_work_area
         ])
         .setup(|app| {
             create_tray(app)?;
