@@ -1,0 +1,33 @@
+{
+  "name": "@ltypet/character-motion",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Shared core package for character rigging, motion sampling, and animation math",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run typecheck && npm run build"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src/schema/*.json",
+    "README.md"
+  ],
+  "dependencies": {
+    "ajv": "8.20.0"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "vitest": "3.2.7"
+  }
+}

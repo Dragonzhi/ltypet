@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ltypet.example.com/schemas/motions.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "rigId", "clips"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "rigId": { "type": "string" },
+    "clips": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "fps",
+          "durationFrames",
+          "loop",
+          "tracks",
+          "events"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]*$"
+          },
+          "fps": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60
+          },
+          "durationFrames": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "loop": {
+            "enum": ["none", "repeat"]
+          },
+          "tracks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["partId", "keyframes"],
+              "properties": {
+                "partId": { "type": "string" },
+                "keyframes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["frame", "values", "easing"],
+                    "properties": {
+                      "frame": { "type": "integer", "minimum": 0 },
+                      "values": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "x": { "type": "number" },
+                          "y": { "type": "number" },
+                          "rotation": { "type": "number" },
+                          "scaleX": { "type": "number" },
+                          "scaleY": { "type": "number" },
+                          "opacity": { "type": "number" },
+                          "renderSlot": { "type": "string" }
+                        }
+                      },
+                      "easing": {
+                        "oneOf": [
+                          { "enum": ["linear", "easeIn", "easeOut", "easeInOut"] },
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["cubicBezier"],
+                            "properties": {
+                              "cubicBezier": {
+                                "type": "array",
+                                "items": { "type": "number" },
+                                "minItems": 4,
+                                "maxItems": 4
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["frame", "type"],
+              "properties": {
+                "frame": { "type": "integer", "minimum": 0 },
+                "type": {
+                  "enum": [
+                    "blink",
+                    "mouthOpen",
+                    "mouthClose",
+                    "sfx",
+                    "custom"
+                  ]
+                },
+                "data": { "type": "string" }
+              }
+            }
+          },
+          "suppressProceduralChannels": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "breathing",
+                "blinking",
+                "pointer-follow",
+                "hair-physics",
+                "ear-twitch"
+              ]
+            },
+            "uniqueItems": true
+          }
+        }
+      }
+    }
+  }
+}

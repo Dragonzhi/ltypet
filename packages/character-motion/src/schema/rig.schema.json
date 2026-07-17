@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ltypet.example.com/schemas/rig.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "rigId", "artwork", "renderSlots", "parts"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "rigId": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+    "artwork": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "fingerprint", "viewBox"],
+      "properties": {
+        "source": { "type": "string" },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "viewBox": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 4,
+          "maxItems": 4
+        }
+      }
+    },
+    "renderSlots": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "parts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "sourceBinding",
+          "logicalParentId",
+          "defaultRenderSlot",
+          "pivot",
+          "bindMatrix"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+          "sourceBinding": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "value"],
+            "properties": {
+              "kind": {
+                "enum": ["inkscapeLabel", "elementId", "dataPart"]
+              },
+              "value": { "type": "string" }
+            }
+          },
+          "logicalParentId": {
+            "type": ["string", "null"],
+            "pattern": "^[a-z][a-z0-9_-]*$"
+          },
+          "defaultRenderSlot": { "type": "string" },
+          "pivot": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["x", "y", "space"],
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "space": { "const": "partLocal" }
+            }
+          },
+          "bindMatrix": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 6,
+            "maxItems": 6
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

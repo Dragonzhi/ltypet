@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "rigId": "xiaoluobao",
+  "clips": [
+    {
+      "id": "wave",
+      "fps": 24,
+      "durationFrames": 24,
+      "loop": "repeat",
+      "tracks": [
+        {
+          "partId": "arm_right",
+          "keyframes": [
+            {
+              "frame": 0,
+              "values": { "rotation": 0 },
+              "easing": "linear"
+            },
+            {
+              "frame": 12,
+              "values": { "rotation": 30 },
+              "easing": "easeInOut"
+            },
+            {
+              "frame": 24,
+              "values": { "rotation": 0 },
+              "easing": "linear"
+            }
+          ]
+        }
+      ],
+      "events": []
+    }
+  ]
+}

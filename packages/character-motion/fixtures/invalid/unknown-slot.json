@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "rigId": "test",
+  "artwork": {
+    "source": "test.svg",
+    "fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "viewBox": [0, 0, 100, 100]
+  },
+  "renderSlots": ["body", "head"],
+  "parts": [
+    {
+      "id": "arm_right",
+      "sourceBinding": { "kind": "elementId", "value": "arm1" },
+      "logicalParentId": null,
+      "defaultRenderSlot": "nonexistent_slot",
+      "pivot": { "x": 0, "y": 0, "space": "partLocal" },
+      "bindMatrix": [1, 0, 0, 1, 0, 0]
+    }
+  ]
+}

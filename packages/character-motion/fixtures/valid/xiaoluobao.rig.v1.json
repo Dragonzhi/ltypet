@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "rigId": "xiaoluobao",
+  "artwork": {
+    "source": "xiaoluobao.svg",
+    "fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "viewBox": [0, 0, 200, 300]
+  },
+  "renderSlots": ["body", "head", "front"],
+  "parts": [
+    {
+      "id": "arm_right",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "arm_right"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "body",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [1, 0, 0, 1, 0, 0]
+    }
+  ]
+}

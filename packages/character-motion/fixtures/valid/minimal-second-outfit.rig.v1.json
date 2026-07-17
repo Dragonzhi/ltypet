@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "rigId": "minimal-second-outfit",
+  "artwork": {
+    "source": "outfit2.svg",
+    "fingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "viewBox": [0, 0, 300, 400]
+  },
+  "renderSlots": ["body", "head", "back"],
+  "parts": [
+    {
+      "id": "arm_right",
+      "sourceBinding": {
+        "kind": "elementId",
+        "value": "arm-right-el"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "body",
+      "pivot": {
+        "x": 10,
+        "y": 5,
+        "space": "partLocal"
+      },
+      "bindMatrix": [1, 0, 0, 1, 0, 0]
+    }
+  ]
+}
