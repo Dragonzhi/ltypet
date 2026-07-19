@@ -8,9 +8,9 @@ import type {
   AffineMatrix,
   CharacterRigV1,
   TransformValue,
-} from "../types";
-import { composeAroundPivot, multiply } from "../math/affine2d";
-import { topologicalOrder } from "./dependencyGraph";
+} from "../types.js";
+import { composeAroundPivot, multiply } from "../math/affine2d.js";
+import { topologicalOrder } from "./dependencyGraph.js";
 
 /**
  * Resolves the world-space pose for all parts given authored transforms.

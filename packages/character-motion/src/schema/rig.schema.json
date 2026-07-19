@@ -12,22 +12,29 @@
       "additionalProperties": false,
       "required": ["source", "fingerprint", "viewBox"],
       "properties": {
-        "source": { "type": "string" },
+        "source": { "type": "string", "minLength": 1 },
         "fingerprint": {
           "type": "string",
           "pattern": "^sha256:[0-9a-f]{64}$"
         },
         "viewBox": {
           "type": "array",
-          "items": { "type": "number" },
+          "prefixItems": [
+            { "type": "number" },
+            { "type": "number" },
+            { "type": "number", "exclusiveMinimum": 0 },
+            { "type": "number", "exclusiveMinimum": 0 }
+          ],
           "minItems": 4,
-          "maxItems": 4
+          "maxItems": 4,
+          "items": false
         }
       }
     },
     "renderSlots": {
       "type": "array",
-      "items": { "type": "string" },
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
       "uniqueItems": true
     },
     "parts": {
@@ -53,14 +60,14 @@
               "kind": {
                 "enum": ["inkscapeLabel", "elementId", "dataPart"]
               },
-              "value": { "type": "string" }
+              "value": { "type": "string", "minLength": 1 }
             }
           },
           "logicalParentId": {
             "type": ["string", "null"],
             "pattern": "^[a-z][a-z0-9_-]*$"
           },
-          "defaultRenderSlot": { "type": "string" },
+          "defaultRenderSlot": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
           "pivot": {
             "type": "object",
             "additionalProperties": false,
@@ -79,7 +86,8 @@
           },
           "tags": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+            "uniqueItems": true
           }
         }
       }

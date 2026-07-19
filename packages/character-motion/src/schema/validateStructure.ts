@@ -3,18 +3,17 @@
  * Validates raw input against the JSON Schema, then returns typed results.
  */
 
-import type { CharacterRigV1, MotionLibraryV1, ValidationResult, ValidationIssue } from "../types";
-import Ajv, { type ErrorObject } from "ajv";
-import rigSchema from "./rig.schema.json";
-import motionsSchema from "./motions.schema.json";
+import type { CharacterRigV1, MotionLibraryV1, ValidationResult, ValidationIssue } from "../types.js";
+import Ajv2020, { type ErrorObject } from "ajv/dist/2020.js";
+import rigSchema from "./rig.schema.json" with { type: "json" };
+import motionsSchema from "./motions.schema.json" with { type: "json" };
 
 // ─── Pre-compiled Validators ─────────────────────────────────────
 
-const ajv = new Ajv({
-  strict: false,
+const ajv = new Ajv2020({
+  strict: true,
   allErrors: true,
-  // Skip schema meta-validation since we author our schemas
-  validateSchema: false,
+  validateSchema: true,
 });
 
 const validateRigJson = ajv.compile(rigSchema);

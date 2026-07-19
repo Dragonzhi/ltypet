@@ -116,7 +116,7 @@ export interface CharacterRigV1 {
 export interface MotionKeyframeV1 {
   frame: number;
   values: Partial<TransformValue> & { renderSlot?: string };
-  easing: EasingValue;
+  easing?: EasingValue;
 }
 
 // ─── Part Track ─────────────────────────────────────────────────
@@ -140,7 +140,7 @@ export type MotionEventType =
 export interface MotionEventV1 {
   frame: number;
   type: MotionEventType;
-  data?: string;
+  payload?: Record<string, string | number | boolean>;
 }
 
 // ─── Motion Clip V1 ─────────────────────────────────────────────

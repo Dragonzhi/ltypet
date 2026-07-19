@@ -40,7 +40,7 @@ const CONTAINER_LABELS = new Set(["character", "hair_accessory"]);
  * 1. XML 解析
  * 2. 完整遍历所有 on* 属性（不依赖 querySelector 的 CSS 选择器）
  * 3. 拒绝 script / foreignObject
- * 4. 拒绝 http: / https: / // / javascript: 外部引用
+ * 4. href/xlink:href 只允许同文档 #id 引用
  * 5. 检查 CSS url(...)：只允许 url(#id)
  * 6. 检查重复/缺失 ID、重复 label、孤立 pivot
  * 7. 发现 Part 和 pivot 信息
@@ -92,15 +92,14 @@ export function inspectSvgForImport(svgText: string): InspectForImportResult {
     }
   }
 
-  // ---- 4. http: / https: / // / javascript: 引用 ----
-  const dangerProtocols = /^(https?:|javascript:|data:)/i;
+  // ---- 4. href/xlink:href 只允许同文档片段引用 ----
   for (const el of allElements) {
     const href = el.getAttribute("href") || "";
     const xlinkHref = el.getAttributeNS("http://www.w3.org/1999/xlink", "href") || "";
     for (const val of [href, xlinkHref]) {
       if (!val) continue;
       const trimmed = val.trim();
-      if (dangerProtocols.test(trimmed) || trimmed.startsWith("//")) {
+      if (!trimmed.startsWith("#")) {
         diags.push({
           severity: "error",
           message: `禁止外部引用: "${trimmed}" 在 <${el.tagName.toLowerCase()}>`,
@@ -109,17 +108,23 @@ export function inspectSvgForImport(svgText: string): InspectForImportResult {
     }
   }
 
-  // ---- 5. CSS url(...) 检查 ----
+  // ---- 5. 任意属性与 <style> 内的 CSS url(...) 只允许 url(#id) ----
   for (const el of allElements) {
-    const style = el.getAttribute("style") || "";
-    const urlMatches = style.matchAll(/url\(([^)]*)\)/gi);
-    for (const m of urlMatches) {
-      const url = m[1].replace(/['"]/g, "").trim();
-      if (!url.startsWith("#") && dangerProtocols.test(url)) {
-        diags.push({
-          severity: "error",
-          message: `禁止 CSS 外部 url: "${url}" 在 <${el.tagName.toLowerCase()}>`,
-        });
+    const cssSources = Array.from(el.attributes, (attribute) => attribute.value);
+    if (el.tagName.toLowerCase() === "style") {
+      cssSources.push(el.textContent ?? "");
+    }
+
+    for (const cssSource of cssSources) {
+      const urlMatches = cssSource.matchAll(/url\(([^)]*)\)/gi);
+      for (const match of urlMatches) {
+        const url = match[1].replace(/['"]/g, "").trim();
+        if (!url.startsWith("#")) {
+          diags.push({
+            severity: "error",
+            message: `禁止 CSS 外部 url: "${url}" 在 <${el.tagName.toLowerCase()}>`,
+          });
+        }
       }
     }
   }
@@ -178,6 +183,11 @@ export function inspectSvgForImport(svgText: string): InspectForImportResult {
         continue;
       }
 
+      if (pivotMap.has(partId)) {
+        diags.push({ severity: "error", message: `重复 pivot label: "pivot_${partId}"` });
+        continue;
+      }
+
       pivotMap.set(partId, {
         x: cx,
         y: cy,
@@ -193,12 +203,12 @@ export function inspectSvgForImport(svgText: string): InspectForImportResult {
     const existing = seenLabels.get(label) ?? 0;
     seenLabels.set(label, existing + 1);
     if (existing > 0) {
-      diags.push({ severity: "warn", message: `重复 label: "${label}"` });
+      diags.push({ severity: "error", message: `重复 label: "${label}"` });
     }
 
     const domId = (el as Element).getAttribute("id") ?? "";
     if (!domId) {
-      diags.push({ severity: "warn", message: `部件 "${label}" 缺少 DOM id` });
+      diags.push({ severity: "error", message: `部件 "${label}" 缺少 DOM id` });
     }
 
     parts.push({ partId: label, inkscapeLabel: label, sourceElementId: domId });

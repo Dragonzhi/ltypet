@@ -2,12 +2,47 @@
   "schemaVersion": 1,
   "rigId": "xiaoluobao",
   "artwork": {
-    "source": "xiaoluobao.svg",
-    "fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-    "viewBox": [0, 0, 200, 300]
+    "source": "小洛宝.glax.svg",
+    "fingerprint": "sha256:4386f8841a89c4a814439b59bc294595e97a297e14ddd444415b640f4afffcc3",
+    "viewBox": [
+      0,
+      0,
+      33.790157,
+      53.378078
+    ]
   },
-  "renderSlots": ["body", "head", "front"],
+  "renderSlots": [
+    "back",
+    "body",
+    "head",
+    "front"
+  ],
   "parts": [
+    {
+      "id": "arm_left",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "arm_left"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "body",
+      "pivot": {
+        "x": 14.463502920000003,
+        "y": 34.90670417,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
+    },
     {
       "id": "arm_right",
       "sourceBinding": {
@@ -17,11 +52,742 @@
       "logicalParentId": null,
       "defaultRenderSlot": "body",
       "pivot": {
+        "x": 19.203310100051606,
+        "y": 34.84220690396765,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
+    },
+    {
+      "id": "black_decoration",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "black_decoration"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "body",
+      "pivot": {
         "x": 0,
         "y": 0,
         "space": "partLocal"
       },
-      "bindMatrix": [1, 0, 0, 1, 0, 0]
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "blue_decoration",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "blue_decoration"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "body",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "blue_hair_accessory_left",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "blue_hair_accessory_left"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 16.766665568711147,
+        "y": 5.3053552002305855,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
+    },
+    {
+      "id": "blue_hair_accessory_right",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "blue_hair_accessory_right"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 16.766665568711147,
+        "y": 5.3053552002305855,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
+    },
+    {
+      "id": "body",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "body"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "body",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "braided_hair",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "braided_hair"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "celestial_updo",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "celestial_updo"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "ear_left",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "ear_left"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "ear_right",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "ear_right"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "eye_left",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "eye_left"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "eye_right",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "eye_right"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "eyebrow_left",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "eyebrow_left"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "eyebrow_right",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "eyebrow_right"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "face",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "face"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "fringe",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "fringe"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 17.153671753020497,
+        "y": 14.18364990519209,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
+    },
+    {
+      "id": "hair_back",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "hair_back"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "hair_front",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "hair_front"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "hair_tail_left",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "hair_tail_left"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "back",
+      "pivot": {
+        "x": 9.138870974638149,
+        "y": 28.37014502536186,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
+    },
+    {
+      "id": "hair_tail_right",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "hair_tail_right"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "back",
+      "pivot": {
+        "x": 24.67814897463814,
+        "y": 28.37014502536186,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
+    },
+    {
+      "id": "head",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "head"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 16.874770999999996,
+        "y": 33.11071400000001,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
+    },
+    {
+      "id": "leg_left",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "leg_left"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "body",
+      "pivot": {
+        "x": 14.828098538501239,
+        "y": 44.87939946149877,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
+    },
+    {
+      "id": "leg_right",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "leg_right"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "body",
+      "pivot": {
+        "x": 19.028097538501235,
+        "y": 44.87939946149877,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
+    },
+    {
+      "id": "mouth",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "mouth"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "rouge",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "rouge"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "temple_left",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "temple_left"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 6.811178889191181,
+        "y": 21.811071623489685,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
+    },
+    {
+      "id": "temple_right",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "temple_right"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 27.373392632850713,
+        "y": 21.805227538043006,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
+    },
+    {
+      "id": "tie",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "tie"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "body",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "tie_tail",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "tie_tail"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "body",
+      "pivot": {
+        "x": 16.887323538501235,
+        "y": 35.53786753850124,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
+    },
+    {
+      "id": "white_cloth",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "white_cloth"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "body",
+      "pivot": {
+        "x": 0,
+        "y": 0,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": "white_hair_accessory_left",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "white_hair_accessory_left"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 16.910154568711146,
+        "y": 5.315704200230583,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
+    },
+    {
+      "id": "white_hair_accessory_right",
+      "sourceBinding": {
+        "kind": "inkscapeLabel",
+        "value": "white_hair_accessory_right"
+      },
+      "logicalParentId": null,
+      "defaultRenderSlot": "head",
+      "pivot": {
+        "x": 16.766665568711147,
+        "y": 5.3053552002305855,
+        "space": "partLocal"
+      },
+      "bindMatrix": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      "tags": [
+        "has_pivot"
+      ]
     }
   ]
 }

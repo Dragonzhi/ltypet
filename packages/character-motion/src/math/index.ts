@@ -9,6 +9,6 @@ export {
   determinant,
   approximatelyEqual,
   composeAroundPivot,
-} from "./affine2d";
+} from "./affine2d.js";
 
-export { computePivotInPartLocal } from "./pivot";
+export { computePivotInPartLocal } from "./pivot.js";

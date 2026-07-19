@@ -20,11 +20,11 @@ describe("frameToTime / timeToFrame", () => {
 });
 
 describe("wrapFrame", () => {
-  it("no loop: clamps to [0, duration)", () => {
+  it("no loop: clamps to the inclusive authored range", () => {
     expect(wrapFrame(-1, 24, "none")).toBe(0);
     expect(wrapFrame(0, 24, "none")).toBe(0);
     expect(wrapFrame(23, 24, "none")).toBe(23);
-    expect(wrapFrame(100, 24, "none")).toBe(23);
+    expect(wrapFrame(100, 24, "none")).toBe(24);
   });
 
   it("repeat: wraps modulo duration", () => {

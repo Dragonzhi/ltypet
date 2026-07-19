@@ -4,8 +4,8 @@
  * Holds first/last value at boundaries.
  */
 
-import type { MotionKeyframeV1, TransformValue } from "../types";
-import { applyEasing } from "./easing";
+import type { MotionKeyframeV1, TransformValue } from "../types.js";
+import { applyEasing } from "./easing.js";
 
 type TransformProperty = keyof TransformValue;
 
@@ -80,7 +80,7 @@ export function samplePropertyAtFrame(
       const t = (frame - left.frame) / range;
 
       // Apply easing
-      const easedT = applyEasing(t, left.easing);
+      const easedT = applyEasing(t, left.easing ?? "linear");
 
       // Linear interpolation with eased t
       return leftVal + (rightVal - leftVal) * easedT;

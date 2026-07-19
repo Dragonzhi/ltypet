@@ -7,8 +7,8 @@ import type {
   CharacterRigV1,
   MotionClipV1,
   TransformValue,
-} from "../types";
-import { samplePropertyAtFrame, sampleRenderSlotAtFrame } from "./sampleProperty";
+} from "../types.js";
+import { samplePropertyAtFrame, sampleRenderSlotAtFrame } from "./sampleProperty.js";
 
 /**
  * Samples a complete motion clip at the given frame.

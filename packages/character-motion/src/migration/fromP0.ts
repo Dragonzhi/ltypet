@@ -8,8 +8,8 @@ import type {
   MotionClipV1,
   MotionKeyframeV1,
   ValidationIssue,
-} from "../types";
-import { canonicalizeMotionLibrary } from "../serialization/canonicalize";
+} from "../types.js";
+import { canonicalizeMotionLibrary } from "../serialization/canonicalize.js";
 
 /**
  * P0 experimental project format (pre-v1).

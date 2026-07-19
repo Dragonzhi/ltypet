@@ -3,8 +3,8 @@
  * Converts between coordinate spaces using affine matrices.
  */
 
-import type { AffineMatrix } from "../types";
-import { invert, transformPoint } from "./affine2d";
+import type { AffineMatrix } from "../types.js";
+import { invert, transformPoint } from "./affine2d.js";
 
 /**
  * Computes the pivot point in part-local space given the part's world

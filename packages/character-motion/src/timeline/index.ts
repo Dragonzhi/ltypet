@@ -1,4 +1,4 @@
-export { applyEasing } from "./easing";
-export { frameToTime, timeToFrame, wrapFrame } from "./frameTime";
-export { samplePropertyAtFrame, sampleRenderSlotAtFrame } from "./sampleProperty";
-export { sampleMotionClip } from "./sampleClip";
+export { applyEasing } from "./easing.js";
+export { frameToTime, timeToFrame, wrapFrame } from "./frameTime.js";
+export { samplePropertyAtFrame, sampleRenderSlotAtFrame } from "./sampleProperty.js";
+export { sampleMotionClip } from "./sampleClip.js";

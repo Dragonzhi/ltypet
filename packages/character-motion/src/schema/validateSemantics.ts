@@ -9,8 +9,8 @@ import type {
   MotionClipV1,
   RigPartV1,
   ValidationIssue,
-} from "../types";
-import { determinant } from "../math/affine2d";
+} from "../types.js";
+import { determinant } from "../math/affine2d.js";
 
 // ─── Epsilon for singular matrix detection ───────────────────────
 
@@ -252,8 +252,29 @@ function validateClipTracks(
       });
     }
 
-    // Check keyframe render slots
+    const keyframeFrames = new Set<number>();
+
+    // Check keyframe frame uniqueness, bounds, and render slots
     for (const kf of track.keyframes) {
+      if (keyframeFrames.has(kf.frame)) {
+        issues.push({
+          code: "duplicate-keyframe-frame",
+          path: `/clips/${clip.id}/tracks/${track.partId}/keyframes/${kf.frame}`,
+          message: `Track "${track.partId}" has more than one keyframe at frame ${kf.frame}`,
+          severity: "error",
+        });
+      }
+      keyframeFrames.add(kf.frame);
+
+      if (kf.frame > clip.durationFrames) {
+        issues.push({
+          code: "keyframe-out-of-range",
+          path: `/clips/${clip.id}/tracks/${track.partId}/keyframes/${kf.frame}`,
+          message: `Keyframe ${kf.frame} exceeds durationFrames ${clip.durationFrames}`,
+          severity: "error",
+        });
+      }
+
       if (
         kf.values.renderSlot !== undefined &&
         !rigRenderSlots.has(kf.values.renderSlot)
@@ -276,6 +297,15 @@ function validateClipEvents(clip: MotionClipV1): ValidationIssue[] {
 
   for (let i = 0; i < clip.events.length; i++) {
     const event = clip.events[i];
+
+    if (event.frame > clip.durationFrames) {
+      issues.push({
+        code: "event-out-of-range",
+        path: `/clips/${clip.id}/events/${i}/frame`,
+        message: `Event frame ${event.frame} exceeds durationFrames ${clip.durationFrames}`,
+        severity: "error",
+      });
+    }
 
     if (!VALID_EVENT_TYPES.has(event.type)) {
       issues.push({

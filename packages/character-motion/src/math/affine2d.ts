@@ -4,7 +4,7 @@
  * No DOMMatrix, no external dependencies.
  */
 
-import type { AffineMatrix } from "../types";
+import type { AffineMatrix } from "../types.js";
 
 // ─── Helpers ────────────────────────────────────────────────────
 

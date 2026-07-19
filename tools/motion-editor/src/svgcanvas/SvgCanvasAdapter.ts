@@ -1,25 +1,28 @@
 /**
- * P1-0 适配器：封装 @svgedit/svgcanvas。
+ * svgcanvas 舞台适配器。
  *
- * 关键改进：
- * - 统一使用 inspectSvgForImport() 作为唯一安全门
- * - precisionPivotInPartLocal() 使用 getCTM() 换算 pivot 到 Part 局部坐标
- * - applyPreviewTransform() 使用 bindMatrix × authored 的 matrix() 形式
+ * DOM/svgcanvas 只负责素材载入、选择和坐标测量；矩阵组合使用共享核心，保证编辑器
+ * 与未来桌宠运行时遵循同一语义。
  */
 
-// @ts-ignore — 无内置类型声明
 import SvgCanvas from "@svgedit/svgcanvas";
+import {
+  composeAroundPivot,
+  computePivotInPartLocal,
+  identity,
+  multiply,
+} from "@ltypet/character-motion";
+import type { AffineMatrix } from "@ltypet/character-motion";
 import { inspectSvgForImport } from "../import/inspectSvgForImport";
-
-// ---------------------------------------------------------------------------
-// 类型
-// ---------------------------------------------------------------------------
 
 export interface ImportedPartRef {
   partId: string;
   inkscapeLabel: string;
   sourceElementId: string;
   element: SVGElement;
+  bindMatrix: AffineMatrix;
+  originalTransform: string | null;
+  originalOpacity: string | null;
 }
 
 export interface Diagnostic {
@@ -30,6 +33,7 @@ export interface Diagnostic {
 export interface ImportResult {
   parts: ImportedPartRef[];
   pivotLocal: Map<string, { x: number; y: number }>;
+  viewBox: [number, number, number, number];
   diagnostics: Diagnostic[];
 }
 
@@ -49,78 +53,72 @@ export interface StageAdapter {
   selectPart(partId: string): boolean;
   applyPreviewTransform(partId: string, transform: PreviewTransform): void;
   restoreBindPose(partId: string): void;
+  getPivotLocal(partId: string): { x: number; y: number } | null;
   getSerializedPreview(): string;
   dispose(): void;
 }
 
-// ---------------------------------------------------------------------------
-// 辅助：矩阵
-// ---------------------------------------------------------------------------
+const DEFAULT_VIEW_BOX: [number, number, number, number] = [0, 0, 1, 1];
 
-interface Mat6 {
-  a: number; b: number; c: number; d: number; e: number; f: number;
+function matrixToString(matrix: AffineMatrix): string {
+  return `matrix(${matrix.join(" ")})`;
 }
 
-function identityMatrix(): Mat6 {
-  return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+function domMatrixToTuple(matrix: DOMMatrix): AffineMatrix {
+  return [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f];
 }
 
-function multiplyMatrix(l: Mat6, r: Mat6): Mat6 {
-  return {
-    a: l.a * r.a + l.c * r.b,
-    b: l.b * r.a + l.d * r.b,
-    c: l.a * r.c + l.c * r.d,
-    d: l.b * r.c + l.d * r.d,
-    e: l.a * r.e + l.c * r.f + l.e,
-    f: l.b * r.e + l.d * r.f + l.f,
-  };
+function readViewBox(root: SVGSVGElement): [number, number, number, number] {
+  const baseVal = root.viewBox?.baseVal;
+  if (
+    baseVal &&
+    Number.isFinite(baseVal.x) &&
+    Number.isFinite(baseVal.y) &&
+    Number.isFinite(baseVal.width) &&
+    Number.isFinite(baseVal.height) &&
+    baseVal.width > 0 &&
+    baseVal.height > 0
+  ) {
+    return [baseVal.x, baseVal.y, baseVal.width, baseVal.height];
+  }
+
+  const raw = root.getAttribute("viewBox")?.trim().split(/[\s,]+/).map(Number);
+  if (
+    raw?.length === 4 &&
+    raw.every(Number.isFinite) &&
+    raw[2] > 0 &&
+    raw[3] > 0
+  ) {
+    return raw as [number, number, number, number];
+  }
+
+  return DEFAULT_VIEW_BOX;
 }
 
-function inverseMatrix(m: Mat6): Mat6 | null {
-  const det = m.a * m.d - m.b * m.c;
-  if (Math.abs(det) < 1e-10) return null;
-  return {
-    a: m.d / det,  b: -m.b / det,
-    c: -m.c / det, d: m.a / det,
-    e: (m.c * m.f - m.d * m.e) / det,
-    f: (m.b * m.e - m.a * m.f) / det,
-  };
+/** Read only the element's own SVG transform, never its world CTM. */
+function readLocalBindMatrix(
+  element: SVGElement,
+  partId: string,
+  diagnostics: Diagnostic[],
+): AffineMatrix {
+  const rawTransform = element.getAttribute("transform");
+  if (!rawTransform) return identity();
+
+  const graphicsElement = element as SVGGraphicsElement;
+  const consolidated = graphicsElement.transform?.baseVal?.consolidate();
+  if (consolidated) return domMatrixToTuple(consolidated.matrix);
+
+  diagnostics.push({
+    severity: "error",
+    message: `部件 "${partId}" 的局部 transform 无法解析，已拒绝生成 rig`,
+  });
+  return identity();
 }
-
-function composeAroundPivot(tx: number, ty: number, rot: number, sx: number, sy: number, px: number, py: number): Mat6 {
-  // T(p) × R(rot) × S(sx, sy) × T(-p) × T(tx, ty)
-  const rad = rot * Math.PI / 180;
-  const cos = Math.cos(rad);
-  const sin = Math.sin(rad);
-
-  const t1: Mat6 = { a: 1, b: 0, c: 0, d: 1, e: tx, f: ty };
-  const tPos: Mat6 = { a: 1, b: 0, c: 0, d: 1, e: px, f: py };
-  const tNeg: Mat6 = { a: 1, b: 0, c: 0, d: 1, e: -px, f: -py };
-  const rotM: Mat6 = { a: cos, b: sin, c: -sin, d: cos, e: 0, f: 0 };
-  const scaleM: Mat6 = { a: sx, b: 0, c: 0, d: sy, e: 0, f: 0 };
-
-  let m = multiplyMatrix(tPos, rotM);
-  m = multiplyMatrix(m, scaleM);
-  m = multiplyMatrix(m, tNeg);
-  m = multiplyMatrix(m, t1);
-  return m;
-}
-
-function matrixToString(m: Mat6): string {
-  return `matrix(${m.a} ${m.b} ${m.c} ${m.d} ${m.e} ${m.f})`;
-}
-
-// ---------------------------------------------------------------------------
-// 实现
-// ---------------------------------------------------------------------------
 
 export class SvgCanvasAdapter implements StageAdapter {
-  private canvas: any = null;
-  private partIndex = new Map<string, ImportedPartRef>();
-  /** partId → bind matrix (6-element tuple) */
-  private bindMatrices = new Map<string, Mat6>();
-  /** partId → pivot in part-local coordinates */
-  private pivotLocal = new Map<string, { x: number; y: number }>();
+  private canvas: SvgCanvas | null = null;
+  private readonly partIndex = new Map<string, ImportedPartRef>();
+  private readonly pivotLocal = new Map<string, { x: number; y: number }>();
 
   mount(container: HTMLElement): void {
     if (this.canvas) throw new Error("SvgCanvas 已挂载");
@@ -137,229 +135,145 @@ export class SvgCanvasAdapter implements StageAdapter {
 
   loadSvg(source: string): ImportResult {
     if (!this.canvas) throw new Error("SvgCanvas 未初始化");
+    this.restoreAllBindPoses();
     this.partIndex.clear();
-    this.bindMatrices.clear();
     this.pivotLocal.clear();
 
-    const diags: ImportResult["diagnostics"] = [];
-
-    // ---- 统一安全门 ----
-    const insp = inspectSvgForImport(source);
-    diags.push(...insp.diagnostics);
-
-    const resolvedParts: ImportedPartRef[] = [];
-
-    if (insp.hasError) {
-      diags.unshift({
-        severity: "error",
-        message: "安全导入拒绝：存在错误，未载入 svgcanvas",
-      });
-      return { parts: resolvedParts, pivotLocal: new Map(), diagnostics: diags };
+    const inspection = inspectSvgForImport(source);
+    const diagnostics: Diagnostic[] = [...inspection.diagnostics];
+    if (inspection.hasError) {
+      diagnostics.unshift({ severity: "error", message: "安全导入拒绝：SVG 未进入 svgcanvas" });
+      return { parts: [], pivotLocal: new Map(), viewBox: DEFAULT_VIEW_BOX, diagnostics };
     }
 
-    // ---- 载入 svgcanvas ----
-    this.canvas.setSvgString(source);
-    const svgCanvasRoot = this.canvas.getSvgRoot() as SVGSVGElement | null;
-    if (!svgCanvasRoot) {
-      diags.push({ severity: "error", message: "svgcanvas 根节点获取失败" });
-      return { parts: resolvedParts, pivotLocal: new Map(), diagnostics: diags };
+    if (!this.canvas.setSvgString(source)) {
+      throw new Error("svgcanvas 拒绝载入 SVG");
     }
+    const root = this.canvas.getSvgRoot();
+    const parts: ImportedPartRef[] = [];
 
-    // ---- 解析部件 ----
-    for (const p of insp.parts) {
-      const el = svgCanvasRoot.querySelector(
-        `[id="${p.sourceElementId}"]`,
-      ) as SVGElement | null;
-
-      if (el) {
-        const ref: ImportedPartRef = {
-          partId: p.partId,
-          inkscapeLabel: p.inkscapeLabel,
-          sourceElementId: p.sourceElementId,
-          element: el,
-        };
-        resolvedParts.push(ref);
-        this.partIndex.set(p.partId, ref);
-
-        // 记录 bind matrix（DOMMatrix → tuple）
-        const ctm = (el as any).getCTM?.();
-        if (ctm) {
-          this.bindMatrices.set(p.partId, {
-            a: ctm.a, b: ctm.b, c: ctm.c,
-            d: ctm.d, e: ctm.e, f: ctm.f,
-          });
-        }
-      } else {
-        diags.push({
-          severity: "warn",
-          message: `部件 "${p.partId}" (DOM id: ${p.sourceElementId}) 在 svgcanvas 中未找到`,
-        });
-      }
-    }
-
-    // ---- Pivot 局部坐标换算 ----
-    // pivotLocal = inverse(partWorldMatrix) × pivotWorldPoint
-    for (const [partId, pivotInfo] of insp.pivotMap) {
-      const ref = this.partIndex.get(partId);
-      if (!ref) continue;
-
-      // 在 svgcanvas DOM 中找到 pivot 元素
-      const pivotEl = svgCanvasRoot.querySelector(
-        `[id="${pivotInfo.sourceElementId}"]`,
-      ) as SVGElement | null;
-      if (!pivotEl) {
-        diags.push({
-          severity: "warn",
-          message: `pivot "${partId}" 元素 (#${pivotInfo.sourceElementId}) 在 svgcanvas 中未找到`,
+    for (const part of inspection.parts) {
+      const element = root.ownerDocument.getElementById(part.sourceElementId);
+      if (!(element instanceof SVGElement)) {
+        diagnostics.push({
+          severity: "error",
+          message: `部件 "${part.partId}" (#${part.sourceElementId}) 在 svgcanvas 中未找到`,
         });
         continue;
       }
 
-      const partCtm = (ref.element as any).getCTM?.() as DOMMatrix | null;
-      const pivotCtm = (pivotEl as any).getCTM?.() as DOMMatrix | null;
-
-      if (!partCtm || !pivotCtm) {
-        diags.push({
-          severity: "warn",
-          message: `无法获取 "${partId}" 或其 pivot 的 CTM`,
-        });
-        continue;
-      }
-
-      // pivotWorldPoint = pivotCtm × local_cx/local_cy
-      const pwpx = pivotCtm.a * pivotInfo.x + pivotCtm.c * pivotInfo.y + pivotCtm.e;
-      const pwpy = pivotCtm.b * pivotInfo.x + pivotCtm.d * pivotInfo.y + pivotCtm.f;
-
-      // inverse(partWorldMatrix)
-      const partM: Mat6 = {
-        a: partCtm.a, b: partCtm.b, c: partCtm.c,
-        d: partCtm.d, e: partCtm.e, f: partCtm.f,
+      const ref: ImportedPartRef = {
+        partId: part.partId,
+        inkscapeLabel: part.inkscapeLabel,
+        sourceElementId: part.sourceElementId,
+        element,
+        bindMatrix: readLocalBindMatrix(element, part.partId, diagnostics),
+        originalTransform: element.getAttribute("transform"),
+        originalOpacity: element.getAttribute("opacity"),
       };
-      const inv = inverseMatrix(partM);
-      if (!inv) {
-        diags.push({
-          severity: "error",
-          message: `部件 "${partId}" 的 CTM 不可逆，无法换算 pivot`,
-        });
+      parts.push(ref);
+      this.partIndex.set(part.partId, ref);
+    }
+
+    for (const [partId, pivotInfo] of inspection.pivotMap) {
+      const part = this.partIndex.get(partId);
+      if (!part) continue;
+
+      const pivotElement = root.ownerDocument.getElementById(pivotInfo.sourceElementId);
+      if (!(pivotElement instanceof SVGGraphicsElement)) {
+        diagnostics.push({ severity: "error", message: `pivot "${partId}" 在 svgcanvas 中未找到` });
         continue;
       }
 
-      const plx = inv.a * pwpx + inv.c * pwpy + inv.e;
-      const ply = inv.b * pwpx + inv.d * pwpy + inv.f;
-
-      if (!Number.isFinite(plx) || !Number.isFinite(ply)) {
-        diags.push({
-          severity: "error",
-          message: `部件 "${partId}" 的换算 pivot 非有限`,
-        });
+      const partCtm = (part.element as SVGGraphicsElement).getCTM();
+      const pivotCtm = pivotElement.getCTM();
+      if (!partCtm || !pivotCtm) {
+        diagnostics.push({ severity: "error", message: `无法测量 "${partId}" 的 pivot CTM` });
         continue;
       }
 
-      this.pivotLocal.set(partId, { x: plx, y: ply });
-      diags.push({
+      const pivotWorld = {
+        x: pivotCtm.a * pivotInfo.x + pivotCtm.c * pivotInfo.y + pivotCtm.e,
+        y: pivotCtm.b * pivotInfo.x + pivotCtm.d * pivotInfo.y + pivotCtm.f,
+      };
+      const local = computePivotInPartLocal(domMatrixToTuple(partCtm), pivotWorld);
+      if (!local || !Number.isFinite(local.x) || !Number.isFinite(local.y)) {
+        diagnostics.push({ severity: "error", message: `部件 "${partId}" 的 pivot 无法换算` });
+        continue;
+      }
+
+      this.pivotLocal.set(partId, local);
+      diagnostics.push({
         severity: "info",
-        message: `pivot "${partId}" 换算: (${plx.toFixed(2)}, ${ply.toFixed(2)}) part-local`,
+        message: `pivot "${partId}": (${local.x.toFixed(4)}, ${local.y.toFixed(4)}) part-local`,
       });
     }
 
-    diags.push({
+    diagnostics.push({
       severity: "info",
-      message: `导入完成: ${resolvedParts.length} 个部件, ${this.pivotLocal.size} 个 pivot 已换算`,
+      message: `导入完成: ${parts.length} 个部件, ${this.pivotLocal.size} 个 pivot`,
     });
 
-    return { parts: resolvedParts, pivotLocal: this.pivotLocal, diagnostics: diags };
+    return {
+      parts,
+      pivotLocal: new Map(this.pivotLocal),
+      viewBox: readViewBox(root),
+      diagnostics,
+    };
   }
 
   selectPart(partId: string): boolean {
-    if (!this.canvas) return false;
-    const ref = this.partIndex.get(partId);
-    if (!ref || !ref.element) return false;
-    try {
-      this.canvas.selectOnly([ref.element], true);
-      return true;
-    } catch {
-      return false;
-    }
+    const part = this.partIndex.get(partId);
+    if (!this.canvas || !part) return false;
+    this.canvas.selectOnly([part.element], true);
+    return true;
   }
 
-  /**
-   * 使用 bindMatrix × authored 组合预览变换。
-   * authored = composeAroundPivot(x, y, rotation, scaleX, scaleY, pivot.x, pivot.y)
-   * previewLocal = bindMatrix × authored
-   */
   applyPreviewTransform(partId: string, transform: PreviewTransform): void {
-    if (!this.canvas) return;
-    const ref = this.partIndex.get(partId);
-    if (!ref || !ref.element) return;
+    const part = this.partIndex.get(partId);
+    if (!part) return;
 
-    const bindM = this.bindMatrices.get(partId) ?? identityMatrix();
-    const pivot = this.pivotLocal.get(partId);
-    const px = pivot?.x ?? 0;
-    const py = pivot?.y ?? 0;
-
+    const pivot = this.pivotLocal.get(partId) ?? { x: 0, y: 0 };
     const authored = composeAroundPivot(
       transform.x,
       transform.y,
       transform.rotation,
       transform.scaleX,
       transform.scaleY,
-      px,
-      py,
+      pivot.x,
+      pivot.y,
     );
-
-    const previewLocal = multiplyMatrix(bindM, authored);
-    const tStr = matrixToString(previewLocal);
-
-    try {
-      // @ts-ignore
-      this.canvas.changeSelectedAttributeNoUndo("transform", tStr);
-    } catch {
-      // ignore
-    }
+    part.element.setAttribute("transform", matrixToString(multiply(part.bindMatrix, authored)));
+    part.element.setAttribute("opacity", String(transform.opacity));
   }
 
-  /**
-   * 恢复 bind pose：
-   * 使用 matrix(a b c d e f) 写回原始 bind 值。
-   * 原节点无 transform → 写入 identity matrix。
-   */
   restoreBindPose(partId: string): void {
-    if (!this.canvas) return;
-    const ref = this.partIndex.get(partId);
-    if (!ref || !ref.element) return;
+    const part = this.partIndex.get(partId);
+    if (!part) return;
 
-    const bindM = this.bindMatrices.get(partId) ?? identityMatrix();
-    const tStr = matrixToString(bindM);
+    if (part.originalTransform === null) part.element.removeAttribute("transform");
+    else part.element.setAttribute("transform", part.originalTransform);
 
-    try {
-      // @ts-ignore
-      this.canvas.changeSelectedAttributeNoUndo("transform", tStr);
-    } catch {
-      // ignore
-    }
+    if (part.originalOpacity === null) part.element.removeAttribute("opacity");
+    else part.element.setAttribute("opacity", part.originalOpacity);
   }
 
-  /** 获取 pivot 在 part-local 坐标系的已换算坐标 */
   getPivotLocal(partId: string): { x: number; y: number } | null {
     return this.pivotLocal.get(partId) ?? null;
   }
 
   getSerializedPreview(): string {
-    if (!this.canvas) return "";
-    try {
-      return this.canvas.getSvgString() ?? "";
-    } catch {
-      return "";
-    }
+    return this.canvas?.getSvgString() ?? "";
   }
 
   dispose(): void {
-    for (const partId of this.partIndex.keys()) {
-      this.restoreBindPose(partId);
-    }
-    this.bindMatrices.clear();
-    this.pivotLocal.clear();
+    this.restoreAllBindPoses();
     this.partIndex.clear();
+    this.pivotLocal.clear();
     this.canvas = null;
+  }
+
+  private restoreAllBindPoses(): void {
+    for (const partId of this.partIndex.keys()) this.restoreBindPose(partId);
   }
 }

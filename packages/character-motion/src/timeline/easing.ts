@@ -3,7 +3,7 @@
  * All pure math — no external dependencies.
  */
 
-import type { EasingValue } from "../types";
+import type { EasingValue } from "../types.js";
 
 /**
  * Clamp input to [0, 1] and return the eased value.

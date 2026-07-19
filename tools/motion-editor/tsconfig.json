@@ -22,5 +22,5 @@
       "@ltypet/character-motion": ["../../packages/character-motion/src"]
     }
   },
-  "include": ["src", "tests"]
+  "include": ["src", "tests", "scripts"]
 }

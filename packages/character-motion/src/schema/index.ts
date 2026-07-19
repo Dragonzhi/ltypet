@@ -3,9 +3,9 @@
  * Chains structural validation → semantic validation.
  */
 
-import type { CharacterRigV1, MotionLibraryV1, ValidationResult } from "../types";
-import { validateRigStructure, validateMotionsStructure } from "./validateStructure";
-import { validateRigSemantics, validateMotionSemantics } from "./validateSemantics";
+import type { CharacterRigV1, MotionLibraryV1, ValidationResult } from "../types.js";
+import { validateRigStructure, validateMotionsStructure } from "./validateStructure.js";
+import { validateRigSemantics, validateMotionSemantics } from "./validateSemantics.js";
 
 /**
  * Validates an unknown input as a CharacterRigV1.
@@ -80,5 +80,5 @@ export function validateMotionLibrary(
 }
 
 // Re-export for convenience
-export { validateRigStructure, validateMotionsStructure } from "./validateStructure";
-export { validateRigSemantics, validateMotionSemantics } from "./validateSemantics";
+export { validateRigStructure, validateMotionsStructure } from "./validateStructure.js";
+export { validateRigSemantics, validateMotionSemantics } from "./validateSemantics.js";

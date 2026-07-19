@@ -12,7 +12,7 @@ import type {
   MotionEventV1,
   AffineMatrix,
   RigPartV1,
-} from "../types";
+} from "../types.js";
 
 // ─── Artwork Text Canonicalization ───────────────────────────────
 
@@ -36,7 +36,9 @@ export function canonicalizeArtworkText(text: string): string {
 
 function canonicalNumber(n: number): number {
   if (Object.is(n, -0)) return 0;
-  if (!Number.isFinite(n)) return 0;
+  if (!Number.isFinite(n)) {
+    throw new TypeError("Cannot canonicalize a non-finite number");
+  }
   return n;
 }
 
@@ -109,8 +111,8 @@ export function canonicalizeMotionLibrary(
 function canonicalizeClip(clip: MotionClipV1): MotionClipV1 {
   const result: MotionClipV1 = {
     id: clip.id,
-    fps: clip.fps,
-    durationFrames: clip.durationFrames,
+    fps: canonicalNumber(clip.fps),
+    durationFrames: canonicalNumber(clip.durationFrames),
     loop: clip.loop,
     tracks: [...clip.tracks]
       .sort((a, b) => a.partId.localeCompare(b.partId))
@@ -165,20 +167,29 @@ function canonicalizeKeyframe(kf: MotionKeyframeV1): MotionKeyframeV1 {
     }
   }
 
-  return {
-    frame: kf.frame,
+  const result: MotionKeyframeV1 = {
+    frame: canonicalNumber(kf.frame),
     values: values as MotionKeyframeV1["values"],
-    easing: kf.easing,
   };
+  if (kf.easing !== undefined) {
+    result.easing = typeof kf.easing === "string"
+      ? kf.easing
+      : { cubicBezier: kf.easing.cubicBezier.map(canonicalNumber) as [number, number, number, number] };
+  }
+  return result;
 }
 
 function canonicalizeEvent(event: MotionEventV1): MotionEventV1 {
   const result: MotionEventV1 = {
-    frame: event.frame,
+    frame: canonicalNumber(event.frame),
     type: event.type,
   };
-  if (event.data !== undefined) {
-    result.data = event.data;
+  if (event.payload !== undefined) {
+    result.payload = Object.fromEntries(
+      Object.entries(event.payload)
+        .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+        .map(([key, value]) => [key, typeof value === "number" ? canonicalNumber(value) : value]),
+    );
   }
   return result;
 }

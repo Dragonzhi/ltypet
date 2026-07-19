@@ -4,6 +4,6 @@ export {
   canonicalizeMotionLibrary,
   serializeRig,
   serializeMotionLibrary,
-} from "./canonicalize";
+} from "./canonicalize.js";
 
-export { sha256CanonicalText } from "./fingerprint";
+export { sha256CanonicalText } from "./fingerprint.js";

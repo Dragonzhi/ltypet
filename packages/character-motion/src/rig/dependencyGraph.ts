@@ -3,7 +3,7 @@
  * Validates parent-child relationships and computes topological order.
  */
 
-import type { RigPartV1 } from "../types";
+import type { RigPartV1 } from "../types.js";
 
 /**
  * Computes the topological order of parts based on logicalParentId.

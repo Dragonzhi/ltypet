@@ -22,7 +22,7 @@ export type {
   MotionLibraryV1,
   ValidationIssue,
   ValidationResult,
-} from "./types";
+} from "./types.js";
 
 // Math
 export {
@@ -37,7 +37,7 @@ export {
   approximatelyEqual,
   composeAroundPivot,
   computePivotInPartLocal,
-} from "./math";
+} from "./math/index.js";
 
 // Timeline
 export {
@@ -48,14 +48,14 @@ export {
   samplePropertyAtFrame,
   sampleRenderSlotAtFrame,
   sampleMotionClip,
-} from "./timeline";
+} from "./timeline/index.js";
 
 // Rig
 export {
   topologicalOrder,
   resolveWorldPose,
   resolveAllPoses,
-} from "./rig";
+} from "./rig/index.js";
 
 // Serialization
 export {
@@ -65,11 +65,11 @@ export {
   serializeRig,
   serializeMotionLibrary,
   sha256CanonicalText,
-} from "./serialization";
+} from "./serialization/index.js";
 
 // Migration
-export { migrateP0ToV1 } from "./migration";
-export type { P0ExperimentalProject } from "./migration";
+export { migrateP0ToV1 } from "./migration/index.js";
+export type { P0ExperimentalProject } from "./migration/index.js";
 
 // Schema / Validation
 export {
@@ -79,4 +79,4 @@ export {
   validateMotionsStructure,
   validateRigSemantics,
   validateMotionSemantics,
-} from "./schema";
+} from "./schema/index.js";

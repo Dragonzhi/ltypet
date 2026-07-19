@@ -3,7 +3,7 @@
  * Uses Web Crypto API (available in modern JS runtimes, no Node deps).
  */
 
-import { canonicalizeArtworkText } from "./canonicalize";
+import { canonicalizeArtworkText } from "./canonicalize.js";
 
 /**
  * Computes the SHA-256 fingerprint of canonicalized text.

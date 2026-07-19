@@ -25,13 +25,13 @@ export function timeToFrame(timeMs: number, fps: number): number {
 /**
  * Wraps a frame number within clip boundaries based on loop mode.
  *
- * - "none": clamps to [0, durationFrames)
+ * - "none": clamps to the inclusive authored range [0, durationFrames]
  * - "repeat": wraps modulo durationFrames
  *
  * @param frame - The raw frame number (may be negative)
  * @param durationFrames - The total number of frames in the clip (positive integer)
  * @param loop - The loop mode
- * @returns A frame number in [0, durationFrames)
+ * @returns A frame number in the clip's legal authored range
  */
 export function wrapFrame(
   frame: number,
@@ -49,5 +49,5 @@ export function wrapFrame(
   }
 
   // "none": clamp
-  return Math.max(0, Math.min(frame, durationFrames - 1));
+  return Math.max(0, Math.min(frame, durationFrames));
 }
