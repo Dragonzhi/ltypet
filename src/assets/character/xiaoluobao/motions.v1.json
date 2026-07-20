@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "rigId": "xiaoluobao",
+  "clips": [
+    {
+      "id": "wave",
+      "fps": 24,
+      "durationFrames": 38,
+      "loop": "none",
+      "tracks": [
+        {
+          "partId": "arm_right",
+          "keyframes": [
+            { "frame": 0, "values": { "x": 0, "y": 0, "rotation": 0.8, "renderSlot": "body" }, "easing": "easeInOut" },
+            { "frame": 3, "values": { "x": 0.34, "y": -0.16, "rotation": -18 }, "easing": "easeInOut" },
+            { "frame": 5, "values": { "x": 0.34, "y": -0.06, "rotation": -106, "renderSlot": "front" }, "easing": "easeInOut" },
+            { "frame": 12, "values": { "x": 0.34, "y": -0.06, "rotation": -90 }, "easing": "easeInOut" },
+            { "frame": 17, "values": { "x": 0.34, "y": -0.06, "rotation": -112 }, "easing": "easeInOut" },
+            { "frame": 23, "values": { "x": 0.34, "y": -0.06, "rotation": -90 }, "easing": "easeInOut" },
+            { "frame": 28, "values": { "x": 0.34, "y": -0.06, "rotation": -112 }, "easing": "easeInOut" },
+            { "frame": 33, "values": { "x": 0.34, "y": -0.06, "rotation": -104 }, "easing": "easeInOut" },
+            { "frame": 35, "values": { "x": 0.34, "y": -0.16, "rotation": -12, "renderSlot": "body" }, "easing": "easeInOut" },
+            { "frame": 38, "values": { "x": 0, "y": 0, "rotation": 0.8 }, "easing": "easeInOut" }
+          ]
+        }
+      ],
+      "events": [],
+      "suppressProceduralChannels": ["breathing"]
+    }
+  ]
+}

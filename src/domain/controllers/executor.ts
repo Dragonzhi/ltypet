@@ -54,7 +54,10 @@ export class PetActionExecutor implements ActionExecutor {
       switch (action.type) {
         case "motion.play": {
           await this.withAbort(
-            () => this.renderer.playMotion(action.payload.motion, { speed: action.payload.speed }),
+            () => this.renderer.playMotion(action.payload.motion, {
+              speed: action.payload.speed,
+              signal,
+            }),
             signal,
             () => this.renderer.reset("interrupt"),
           );
@@ -101,6 +104,19 @@ export class PetActionExecutor implements ActionExecutor {
     } catch (error: unknown) {
       if (error instanceof Error && error.message === "aborted") {
         return { actionId: action.id, status: "interrupted", finishedAt: this.clock() };
+      }
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        (error.code === "unsupported_action" || error.code === "renderer_unavailable")
+      ) {
+        return {
+          actionId: action.id,
+          status: "rejected",
+          errorCode: String(error.code),
+          reason: error.message,
+          finishedAt: this.clock(),
+        };
       }
       return { actionId: action.id, status: "failed", finishedAt: this.clock(), reason: String(error) };
     }

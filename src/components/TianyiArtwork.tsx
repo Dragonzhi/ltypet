@@ -1,13 +1,20 @@
-import artworkSource from "../assets/小洛宝.svg?raw";
+import artworkSource from "../assets/character/xiaoluobao/artwork.svg?raw";
+import rigJson from "../assets/character/xiaoluobao/rig.v1.json";
+import { validateRig } from "@ltypet/character-motion";
 import { memo, useLayoutEffect, useRef } from "react";
+import { SvgRuntimeRig } from "../motion/runtime/SvgRuntimeRig";
 
 export type PetExpression = "normal" | "blink" | "speak" | "sleep";
-export type PetAction = "none" | "wave";
-
 interface TianyiArtworkProps {
   expression: PetExpression;
-  action: PetAction;
+  onMotionTargetReady?: (target: SvgRuntimeRig | null) => void;
 }
+
+const validatedRig = validateRig(rigJson);
+if (!validatedRig.ok) {
+  throw new Error(`生产 rig 无效：${validatedRig.issues.map((issue) => issue.message).join("；")}`);
+}
+const productionRig = validatedRig.value;
 
 const animatedLayerLabels = [
   "character",
@@ -98,7 +105,10 @@ const StaticArtwork = memo(() => (
   />
 ));
 
-const TianyiArtwork = ({ expression, action }: TianyiArtworkProps) => {
+const TianyiArtwork = ({
+  expression,
+  onMotionTargetReady,
+}: TianyiArtworkProps) => {
   const artworkElement = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -120,29 +130,13 @@ const TianyiArtwork = ({ expression, action }: TianyiArtworkProps) => {
     const svgNamespace = "http://www.w3.org/2000/svg";
     const follow = document.createElementNS(svgNamespace, "g");
     const motion = document.createElementNS(svgNamespace, "g");
-    const foreground = document.createElementNS(svgNamespace, "g");
-    const foregroundFollow = document.createElementNS(svgNamespace, "g");
-    const foregroundMotion = document.createElementNS(svgNamespace, "g");
-    const foregroundArm = arm.cloneNode(true) as SVGGElement;
     follow.id = "arm-right-follow";
     motion.id = "arm-right-motion";
-    foreground.id = "action-foreground";
-    foregroundFollow.id = "arm-right-foreground-follow";
-    foregroundMotion.id = "arm-right-foreground-motion";
-    foregroundArm.id = "arm-right-foreground";
-    foregroundArm
-      .querySelectorAll<SVGElement>("[id]")
-      .forEach((element) => element.removeAttribute("id"));
     motion.style.animation = "none";
-    foregroundMotion.style.animation = "none";
 
     originalParent.insertBefore(follow, arm);
     follow.appendChild(motion);
     motion.appendChild(arm);
-    foregroundMotion.appendChild(foregroundArm);
-    foregroundFollow.appendChild(foregroundMotion);
-    foreground.appendChild(foregroundFollow);
-    character.appendChild(foreground);
 
     const wrapLayer = (
       layer: SVGGElement | null | undefined,
@@ -212,7 +206,6 @@ const TianyiArtwork = ({ expression, action }: TianyiArtworkProps) => {
     // HMR 时 CSS 变量仍保留着当前姿态；测量轴心前必须回到素材原始坐标。
     for (const followLayer of [
       follow,
-      foregroundFollow,
       leftArmFollow?.wrapper,
       ...pivotRigs.map((rig) => rig.wrapper),
       ...tailHeadFollows.map((followRig) => followRig.wrapper),
@@ -264,8 +257,6 @@ const TianyiArtwork = ({ expression, action }: TianyiArtworkProps) => {
     setPivotOrigin(pivot, originalParent, [
       follow,
       motion,
-      foregroundFollow,
-      foregroundMotion,
     ]);
 
     if (leftArmFollow && leftPivot) {
@@ -274,7 +265,6 @@ const TianyiArtwork = ({ expression, action }: TianyiArtworkProps) => {
       ]);
     }
     motion.style.removeProperty("animation");
-    foregroundMotion.style.removeProperty("animation");
 
     if (head && headPivot && head.parentNode) {
       setPivotOrigin(headPivot, head.parentNode, [head]);
@@ -289,7 +279,18 @@ const TianyiArtwork = ({ expression, action }: TianyiArtworkProps) => {
     }
     measurementRestores.reverse().forEach((restore) => restore());
 
+    let runtimeRig: SvgRuntimeRig | null = null;
+    try {
+      runtimeRig = new SvgRuntimeRig(svg, productionRig);
+      onMotionTargetReady?.(runtimeRig);
+    } catch (error) {
+      console.error("初始化 SVG 动作 rig 失败:", error);
+      onMotionTargetReady?.(null);
+    }
+
     return () => {
+      onMotionTargetReady?.(null);
+      runtimeRig?.dispose();
       // 相邻图层必须逆序还原：左耳的 nextSibling 是仍在外壳里的右耳。
       for (const rig of [
         leftArmFollow,
@@ -306,16 +307,14 @@ const TianyiArtwork = ({ expression, action }: TianyiArtworkProps) => {
       }
       originalParent.insertBefore(arm, originalNextSibling);
       follow.remove();
-      foreground.remove();
     };
-  }, [artworkMarkup]);
+  }, [onMotionTargetReady]);
 
   return (
     <div
       ref={artworkElement}
       aria-hidden="true"
       className={`tianyi-artwork expression-${expression}`}
-      data-action={action}
     >
       <StaticArtwork />
     </div>

@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { cursorPosition, getCurrentWindow } from "@tauri-apps/api/window";
-import TianyiArtwork, {
-  type PetAction,
-  type PetExpression,
-} from "./TianyiArtwork";
+import TianyiArtwork, { type PetExpression } from "./TianyiArtwork";
 import {
   useEarTwitch,
   useHairMotion,
@@ -34,31 +31,37 @@ interface ContextMenuPosition {
 }
 
 interface TianyiPetInnerProps {
-  action: PetAction;
   expression: PetExpression;
-  setAction: (action: PetAction) => void;
   setExpression: (expression: PetExpression) => void;
+  setMotionExpression: (expression: PetExpression | null) => void;
+  suppressedChannels: ReadonlySet<string>;
+  setSuppressedChannels: (channels: ReadonlySet<string>) => void;
   children?: ReactNode;
 }
 
 const TianyiPetInner = ({
-  action,
   expression,
-  setAction,
   setExpression,
+  setMotionExpression,
+  suppressedChannels,
+  setSuppressedChannels,
   children,
 }: TianyiPetInnerProps) => {
   const petElement = useRef<HTMLDivElement>(null);
 
   return (
     <PetRuntimeProvider
-      binding={{ petElement, setAction, setExpression }}
+      binding={{
+        petElement,
+        setExpression,
+        setMotionExpression,
+        setSuppressedChannels,
+      }}
     >
       <TianyiPetInnerContent
-        action={action}
         expression={expression}
-        setAction={setAction}
         setExpression={setExpression}
+        suppressedChannels={suppressedChannels}
         petElement={petElement}
       />
       {children}
@@ -67,18 +70,16 @@ const TianyiPetInner = ({
 };
 
 interface TianyiPetInnerContentProps {
-  action: PetAction;
   expression: PetExpression;
-  setAction: (action: PetAction) => void;
   setExpression: (expression: PetExpression) => void;
+  suppressedChannels: ReadonlySet<string>;
   petElement: React.RefObject<HTMLDivElement | null>;
 }
 
 const TianyiPetInnerContent = ({
-  action,
   expression,
-  setAction,
   setExpression,
+  suppressedChannels,
   petElement,
 }: TianyiPetInnerContentProps) => {
   const [state, setState] = useState<PetState>("idle");
@@ -87,14 +88,18 @@ const TianyiPetInnerContent = ({
   const hasDragged = useRef(false);
   const restoreStateTimer = useRef<number | undefined>(undefined);
 
-  const { scheduler } = usePetRuntime();
+  const { scheduler, renderer } = usePetRuntime();
   const { updateWindowPosition } = useSettings();
 
   // Keep hooks as-is
-  usePointerFollow(petElement, "global");
-  useEarTwitch(petElement);
+  usePointerFollow(
+    petElement,
+    "global",
+    !suppressedChannels.has("pointer-follow"),
+  );
+  useEarTwitch(petElement, !suppressedChannels.has("ear-twitch"));
   const { beginDrag: beginHairDrag, endDrag: endHairDrag } =
-    useHairMotion(petElement);
+    useHairMotion(petElement, !suppressedChannels.has("hair-physics"));
 
   // --- Drag end handler: resume agent actions and persist window position ---
   const handleWindowDragEnd = useCallback(
@@ -127,6 +132,7 @@ const TianyiPetInnerContent = ({
   // idle 动画循环 — 随机眨眼，并在短暂动作结束后恢复原状态。
   useEffect(() => {
     if (state !== "idle" && state !== "listen") return;
+    if (suppressedChannels.has("blinking")) return;
 
     const blinkTimer = window.setTimeout(() => {
       setExpression("blink");
@@ -136,7 +142,7 @@ const TianyiPetInnerContent = ({
     }, 3000 + Math.random() * 2000);
 
     return () => window.clearTimeout(blinkTimer);
-  }, [state, setExpression]);
+  }, [state, setExpression, suppressedChannels]);
 
   useEffect(
     () => () => {
@@ -158,9 +164,9 @@ const TianyiPetInnerContent = ({
     if (event.button !== 0) return;
 
     scheduler.cancelChannel("locomotion");
+    scheduler.cancelChannel("body-motion");
     scheduler.pauseAgentActions();
 
-    setAction("none");
     setState("drag");
     hasDragged.current = false;
     beginHairDrag(event.screenX, event.screenY);
@@ -260,12 +266,23 @@ const TianyiPetInnerContent = ({
     triggerWave();
   };
 
+  const handleMotionTargetReady = useCallback(
+    (target: Parameters<typeof renderer.setMotionTarget>[0]) => {
+      renderer.setMotionTarget(target);
+    },
+    [renderer],
+  );
+
   return (
     <div
       ref={petElement}
       aria-label="小洛宝，按回车招手，按菜单键打开菜单"
       className={`pet-shell${state === "sleep" ? " is-sleeping" : ""}`}
-      data-action={action}
+      data-suppress-breathing={suppressedChannels.has("breathing") || undefined}
+      data-suppress-blinking={suppressedChannels.has("blinking") || undefined}
+      data-suppress-pointer-follow={suppressedChannels.has("pointer-follow") || undefined}
+      data-suppress-hair-physics={suppressedChannels.has("hair-physics") || undefined}
+      data-suppress-ear-twitch={suppressedChannels.has("ear-twitch") || undefined}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       onMouseDown={handleMouseDown}
@@ -276,7 +293,10 @@ const TianyiPetInnerContent = ({
       }}
       tabIndex={0}
     >
-      <TianyiArtwork action={action} expression={expression} />
+      <TianyiArtwork
+        expression={expression}
+        onMotionTargetReady={handleMotionTargetReady}
+      />
     </div>
   );
 };
@@ -286,15 +306,19 @@ interface TianyiPetProps {
 }
 
 const TianyiPet = ({ children }: TianyiPetProps) => {
-  const [action, setAction] = useState<PetAction>("none");
-  const [expression, setExpression] = useState<PetExpression>("normal");
+  const [baseExpression, setBaseExpression] = useState<PetExpression>("normal");
+  const [motionExpression, setMotionExpression] = useState<PetExpression | null>(null);
+  const [suppressedChannels, setSuppressedChannels] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
 
   return (
     <TianyiPetInner
-      action={action}
-      expression={expression}
-      setAction={setAction}
-      setExpression={setExpression}
+      expression={motionExpression ?? baseExpression}
+      setExpression={setBaseExpression}
+      setMotionExpression={setMotionExpression}
+      suppressedChannels={suppressedChannels}
+      setSuppressedChannels={setSuppressedChannels}
     >
       {children}
     </TianyiPetInner>

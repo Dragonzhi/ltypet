@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "rigId": "xiaoluobao",
   "artwork": {
-    "source": "小洛宝.glax.svg",
+    "source": "artwork.svg",
     "fingerprint": "sha256:4386f8841a89c4a814439b59bc294595e97a297e14ddd444415b640f4afffcc3",
     "viewBox": [
       0,

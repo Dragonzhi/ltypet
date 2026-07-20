@@ -151,7 +151,9 @@ describe("完整链路：合法输入从校验到执行", () => {
     // Scheduler should have called renderer
     expect(ctx.renderer.calls.length).toBe(1);
     expect(ctx.renderer.calls[0].method).toBe("playMotion");
-    expect(ctx.renderer.calls[0].args).toEqual(["wave", { speed: 1 }]);
+    expect(ctx.renderer.calls[0].args[0]).toBe("wave");
+    expect(ctx.renderer.calls[0].args[1]).toMatchObject({ speed: 1 });
+    expect((ctx.renderer.calls[0].args[1] as { signal: AbortSignal }).signal).toBeInstanceOf(AbortSignal);
 
     // Complete the motion
     ctx.renderer.completeMotion("wave");
@@ -415,7 +417,9 @@ describe("完整链路：默认值正确传播", () => {
     ctx.scheduler.submit(validation.action, { channel });
 
     // Executor should pass speed: 1 to renderer
-    expect(ctx.renderer.calls[0].args).toEqual(["wave", { speed: 1 }]);
+    expect(ctx.renderer.calls[0].args[0]).toBe("wave");
+    expect(ctx.renderer.calls[0].args[1]).toMatchObject({ speed: 1 });
+    expect((ctx.renderer.calls[0].args[1] as { signal: AbortSignal }).signal).toBeInstanceOf(AbortSignal);
   });
 
   it("speech.say 缺省 interrupt 默认为 true，提交到调度器后因能力未实现返回 rejected", async () => {

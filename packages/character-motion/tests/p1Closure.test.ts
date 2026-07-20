@@ -15,7 +15,7 @@ function readJson(relativePath: string): unknown {
 
 describe("P1 real fixtures", () => {
   it("validates the generated xiaoluobao rig and exported wave", () => {
-    const rigResult = validateRig(readJson("../fixtures/valid/xiaoluobao.rig.v1.json"));
+    const rigResult = validateRig(readJson("../../../src/assets/character/xiaoluobao/rig.v1.json"));
     expect(rigResult.ok).toBe(true);
     if (!rigResult.ok) return;
 
@@ -27,14 +27,14 @@ describe("P1 real fixtures", () => {
     expect(rigResult.value.parts.find((part) => part.id === "arm_right")?.pivot.x).toBeCloseTo(19.20331);
 
     const motionResult = validateMotionLibrary(
-      readJson("../../../src/assets/p0-wave.motions.v1.json"),
+      readJson("../../../src/assets/character/xiaoluobao/motions.v1.json"),
       rigResult.value,
     );
     expect(motionResult.ok).toBe(true);
   });
 
   it("validates every declared valid fixture and rejects every invalid rig fixture", () => {
-    for (const name of ["xiaoluobao.rig.v1.json", "minimal-second-outfit.rig.v1.json"]) {
+    for (const name of ["minimal-second-outfit.rig.v1.json"]) {
       expect(validateRig(readJson(`../fixtures/valid/${name}`)).ok, name).toBe(true);
     }
     for (const name of ["duplicate-part.json", "cyclic-parent.json", "unknown-slot.json", "singular-bind-matrix.json"]) {
@@ -44,7 +44,7 @@ describe("P1 real fixtures", () => {
 });
 
 describe("P1 strict schema and canonicalization", () => {
-  const rig = validateRig(readJson("../fixtures/valid/xiaoluobao.rig.v1.json"));
+  const rig = validateRig(readJson("../../../src/assets/character/xiaoluobao/rig.v1.json"));
   if (!rig.ok) throw new Error("test fixture must be valid");
 
   it("rejects invalid viewBox, names, numeric ranges, and empty keyframe values", () => {
@@ -97,7 +97,7 @@ describe("P1 strict schema and canonicalization", () => {
   });
 
   it("keeps full motion libraries byte-stable and rejects non-finite serialization", () => {
-    const library = readJson("../../../src/assets/p0-wave.motions.v1.json") as MotionLibraryV1;
+    const library = readJson("../../../src/assets/character/xiaoluobao/motions.v1.json") as MotionLibraryV1;
     const first = serializeMotionLibrary(library);
     const second = serializeMotionLibrary(JSON.parse(first) as MotionLibraryV1);
     expect(second).toBe(first);

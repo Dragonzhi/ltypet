@@ -20,6 +20,7 @@ const deg = (value: number) => `${value.toFixed(2)}deg`;
 export const usePointerFollow = (
   petElement: PetElementRef,
   mode: "local" | "global" = "local",
+  enabled = true,
 ) => {
   // 全局模式下需要跟踪窗口位置，用于屏幕坐标 → 视口坐标转换
   const winPosRef = useRef({ x: 0, y: 0 });
@@ -43,6 +44,19 @@ export const usePointerFollow = (
       "--look-transition-ms",
       `${config.transitionMs}ms`,
     );
+
+    if (!enabled) {
+      const pet = petElementRef.current.current;
+      for (const name of [
+        "--eye-x", "--eye-y", "--brow-x", "--brow-y", "--mouth-x",
+        "--mouth-y", "--rouge-x", "--rouge-y", "--head-x", "--head-y",
+        "--body-x", "--body-y", "--arm-look-x", "--arm-look-y",
+      ]) pet?.style.setProperty(name, "0px");
+      for (const name of ["--head-rotate", "--body-rotate", "--arm-look-rotate", "--tail-look-rotate"]) {
+        pet?.style.setProperty(name, "0deg");
+      }
+      return;
+    }
 
     const updatePosition = () => {
       animationFrame = undefined;
@@ -192,13 +206,14 @@ export const usePointerFollow = (
         window.cancelAnimationFrame(animationFrame);
       }
     };
-  }, [petElement, mode, config]);
+  }, [petElement, mode, config, enabled]);
 };
 
-export const useEarTwitch = (petElement: PetElementRef) => {
+export const useEarTwitch = (petElement: PetElementRef, enabled = true) => {
   const config = PET_ANIMATION_CONFIG.earTwitch;
 
   useEffect(() => {
+    if (!enabled) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const leftEar =
@@ -245,7 +260,7 @@ export const useEarTwitch = (petElement: PetElementRef) => {
       if (timer !== undefined) window.clearTimeout(timer);
       animations.forEach((animation) => animation.cancel());
     };
-  }, [petElement, config]);
+  }, [petElement, config, enabled]);
 };
 
 interface SpringAxis {
@@ -260,7 +275,7 @@ interface DragSample {
   time: number;
 }
 
-export const useHairMotion = (petElement: PetElementRef) => {
+export const useHairMotion = (petElement: PetElementRef, enabled = true) => {
   const config = PET_ANIMATION_CONFIG.hairMotion;
   const frame = useRef<number | undefined>(undefined);
   const previousFrameTime = useRef<number | undefined>(undefined);
@@ -359,6 +374,7 @@ export const useHairMotion = (petElement: PetElementRef) => {
 
   const exciteRotation = useCallback(
     (deltaX: number, deltaMs: number) => {
+      if (!enabled) return;
       const normalizedX = normalizeDragVelocity(
         deltaX,
         deltaMs,
@@ -368,7 +384,7 @@ export const useHairMotion = (petElement: PetElementRef) => {
         -normalizedX * config.maxInertiaRotateDeg;
       ensureAnimation();
     },
-    [config, ensureAnimation],
+    [config, enabled, ensureAnimation],
   );
 
   const sampleDrag = useCallback(
@@ -399,6 +415,7 @@ export const useHairMotion = (petElement: PetElementRef) => {
   );
 
   const beginDrag = useCallback((screenX: number, screenY: number) => {
+    if (!enabled) return;
     const now = performance.now();
     const recentCursor = latestCursor.current;
     const initialSample =
@@ -407,7 +424,7 @@ export const useHairMotion = (petElement: PetElementRef) => {
         : { x: screenX, y: screenY, time: now };
     isDragging.current = true;
     lastDragSample.current = initialSample;
-  }, []);
+  }, [enabled]);
 
   const endDrag = useCallback(() => {
     isDragging.current = false;
@@ -417,6 +434,7 @@ export const useHairMotion = (petElement: PetElementRef) => {
   }, [ensureAnimation]);
 
   useEffect(() => {
+    if (!enabled) return;
     let disposed = false;
     let unlisten: (() => void) | undefined;
     void listen<{ x: number; y: number }>("global-cursor-move", (event) => {
@@ -429,9 +447,10 @@ export const useHairMotion = (petElement: PetElementRef) => {
       disposed = true;
       unlisten?.();
     };
-  }, [sampleDrag]);
+  }, [enabled, sampleDrag]);
 
   useEffect(() => {
+    if (!enabled) return;
     const windowHandle = getCurrentWindow();
     let disposed = false;
     let unlisten: (() => void) | undefined;
@@ -460,11 +479,19 @@ export const useHairMotion = (petElement: PetElementRef) => {
       disposed = true;
       unlisten?.();
     };
-  }, [sampleWindowMove]);
+  }, [enabled, sampleWindowMove]);
 
   useEffect(() => {
     const pet = petElement.current;
     if (!pet) return;
+    if (!enabled) {
+      rotationAxis.current = { position: 0, velocity: 0, target: 0 };
+      if (frame.current !== undefined) window.cancelAnimationFrame(frame.current);
+      frame.current = undefined;
+      previousFrameTime.current = undefined;
+      writeMotion();
+      return;
+    }
     const idle = config.idle;
     const setIdle = (
       id: string,
@@ -552,7 +579,7 @@ export const useHairMotion = (petElement: PetElementRef) => {
       previousFrameTime.current = undefined;
     }
     writeMotion();
-  }, [config, petElement, writeMotion]);
+  }, [config, enabled, petElement, writeMotion]);
 
   useEffect(
     () => () => {

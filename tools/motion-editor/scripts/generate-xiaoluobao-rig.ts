@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { JSDOM } from "jsdom";
 import { serializeRig } from "@ltypet/character-motion";
@@ -8,10 +8,8 @@ import { buildRigFromImport } from "../src/project/v1Project";
 import type { ImportResult, ImportedPartRef } from "../src/svgcanvas/SvgCanvasAdapter";
 
 const repositoryRoot = resolve(import.meta.dirname, "../../..");
-const assetsDirectory = resolve(repositoryRoot, "src/assets");
-const artworkFile = readdirSync(assetsDirectory).find((name) => name.endsWith(".glax.svg"));
-if (!artworkFile) throw new Error("未找到 .glax.svg 样例素材");
-
+const assetsDirectory = resolve(repositoryRoot, "src/assets/character/xiaoluobao");
+const artworkFile = "artwork.svg";
 const artworkPath = resolve(assetsDirectory, artworkFile);
 const source = readFileSync(artworkPath, "utf8");
 const canonical = source.replace(/\r\n/g, "\n").replace(/\r/g, "\n").normalize("NFC");
@@ -61,7 +59,7 @@ const imported: ImportResult = {
   diagnostics: inspection.diagnostics,
 };
 const rig = buildRigFromImport(imported, { source: artworkFile, fingerprint });
-const output = resolve(repositoryRoot, "packages/character-motion/fixtures/valid/xiaoluobao.rig.v1.json");
+const output = resolve(assetsDirectory, "rig.v1.json");
 writeFileSync(output, serializeRig(rig), "utf8");
 console.log(`已生成 ${output}`);
 console.log(`${rig.parts.length} parts, ${imported.pivotLocal.size} pivots, ${fingerprint}`);

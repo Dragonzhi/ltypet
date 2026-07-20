@@ -4,6 +4,7 @@ import type { WindowTarget } from "../actions/types";
 // --- Motion playback options ---
 export interface MotionOptions {
   speed?: number;
+  signal?: AbortSignal;
 }
 
 // --- Expression display options ---

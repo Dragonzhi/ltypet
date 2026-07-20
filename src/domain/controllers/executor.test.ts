@@ -135,7 +135,10 @@ describe("motion.play 分发", () => {
 
     expect(ctx.renderer.calls.length).toBe(1);
     expect(ctx.renderer.calls[0].method).toBe("playMotion");
-    expect(ctx.renderer.calls[0].args).toEqual(["wave", { speed: 2 }]);
+    expect(ctx.renderer.calls[0].args).toEqual([
+      "wave",
+      { speed: 2, signal: ctx.signal },
+    ]);
 
     // Complete the motion
     ctx.renderer.completeMotion("wave");
@@ -179,6 +182,20 @@ describe("motion.play 分发", () => {
     expect(result.status).toBe("failed");
     expect(result.actionId).toBe("test-3");
     expect(result.reason).toContain("渲染失败");
+  });
+
+  it("渲染器已知不可用错误映射为 rejected", async () => {
+    const action = makeAction("test-known-error", "motion.play", { motion: "wave" });
+    const promise = ctx.executor.execute(action, ctx.signal);
+    await vi.advanceTimersByTimeAsync(0);
+    const error = Object.assign(new Error("动作尚未就绪"), {
+      code: "renderer_unavailable",
+    });
+    ctx.renderer.rejectMotion("wave", error);
+    await expect(promise).resolves.toMatchObject({
+      status: "rejected",
+      errorCode: "renderer_unavailable",
+    });
   });
 
   it("信号已中断时立即返回 interrupted", async () => {

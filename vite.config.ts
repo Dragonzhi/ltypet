@@ -9,6 +9,14 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
   plugins: [react()],
 
+  resolve: {
+    alias: {
+      "@ltypet/character-motion": fileURLToPath(
+        new URL("./packages/character-motion/src/index.ts", import.meta.url),
+      ),
+    },
+  },
+
   build: {
     rollupOptions: {
       input: {
