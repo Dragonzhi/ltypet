@@ -17,6 +17,7 @@ import {
   findSourceBindingMatches,
   inspectSvgForImport,
 } from "../import/inspectSvgForImport";
+import { projectRenderSlots } from "./renderSlotProjection";
 
 export interface ImportedPartRef {
   partId: string;
@@ -525,25 +526,12 @@ export class SvgCanvasAdapter implements StageAdapter {
       return;
     }
     if (this.renderOrderAltered) this.restoreRenderOrder();
-    const slotIndex = new Map(slotOrder.map((slot, index) => [slot, index]));
-    const groups = new Map<Node, ImportedPartRef[]>();
-    for (const part of this.partIndex.values()) {
-      const parent = part.element.parentNode;
-      if (!parent) continue;
-      const list = groups.get(parent) ?? [];
-      list.push(part);
-      groups.set(parent, list);
-    }
-    for (const [parent, parts] of groups) {
-      parts.sort((left, right) => {
-        const leftSlot = changedOverrides.get(left.partId) ?? defaultSlots.get(left.partId) ?? "";
-        const rightSlot = changedOverrides.get(right.partId) ?? defaultSlots.get(right.partId) ?? "";
-        const slotDifference = (slotIndex.get(leftSlot) ?? 0) - (slotIndex.get(rightSlot) ?? 0);
-        return slotDifference || left.sourceOrder - right.sourceOrder;
-      });
-      for (const part of parts) parent.appendChild(part.element);
-    }
-    this.renderOrderAltered = true;
+    this.renderOrderAltered = projectRenderSlots(
+      this.partIndex.values(),
+      defaultSlots,
+      changedOverrides,
+      slotOrder,
+    );
   }
 
   getSerializedPreview(): string {
