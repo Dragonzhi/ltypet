@@ -28,7 +28,7 @@
 | Rust | edition 2021；交接环境为 Rust/Cargo 1.97.0 |
 | Node | 交接环境为 Node 22.20.0 |
 
-依赖使用宽松的 semver 范围，根目录 `.gitignore` 又忽略了 `package-lock.json`，因此不同机器执行 `npm install` 可能得到不同小版本。涉及依赖或构建问题时，先记录 `node --version` 和 `npm ls --depth=0`。
+`package.json` 仍使用 semver 范围，但根应用、共享动画包和 Animation Studio 的 `package-lock.json` 均纳入版本控制；干净构建和发布使用 `npm ci`，不要用一次新的 `npm install` 结果静默改写锁文件。涉及依赖或构建问题时，仍先记录 `node --version` 和 `npm ls --depth=0`。
 
 ## 3. 关键入口与职责边界
 

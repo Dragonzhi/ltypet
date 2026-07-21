@@ -1,5 +1,6 @@
 use crate::models::{
-    EditorStateV1, HostError, HostResult, ProjectManifestV1, ProjectSnapshot, SaveResult,
+    EditorStateV1, HostError, HostResult, ProjectBackupV1, ProjectManifestV1, ProjectSnapshot,
+    SaveResult, SchemaCompatibility,
 };
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -8,9 +9,16 @@ use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 const MANIFEST_FILE: &str = "project.ltypet.json";
+const BACKUP_DIRECTORY: &str = ".ltypet-backups";
+const BACKUP_METADATA_FILE: &str = "backup.v1.json";
+const BACKUP_RETENTION: usize = 5;
+pub const CURRENT_PROJECT_SCHEMA: u8 = 1;
+pub const CURRENT_RIG_SCHEMA: u8 = 1;
+pub const CURRENT_MOTIONS_SCHEMA: u8 = 1;
 
 pub fn read_project(root: &Path) -> HostResult<ProjectSnapshot> {
     let root = canonical_directory(root, "read")?;
@@ -46,6 +54,7 @@ pub fn save_project(
     }
     let root = canonical_directory(root, "save")?;
     recover_transactions(&root)?;
+    let backup_id = create_durable_backup(&root, "before_save")?;
     let paths = validate_manifest_paths(&root, &snapshot.manifest)?;
     let mut writes = vec![
         (
@@ -87,7 +96,173 @@ pub fn save_project(
     Ok(SaveResult {
         root: root.display().to_string(),
         signature,
+        backup_id,
     })
+}
+
+pub fn compatibility(snapshot: &ProjectSnapshot) -> HostResult<SchemaCompatibility> {
+    validate_snapshot(snapshot)?;
+    Ok(SchemaCompatibility {
+        editor_version: env!("CARGO_PKG_VERSION").to_string(),
+        project_schema: CURRENT_PROJECT_SCHEMA,
+        rig_schema: CURRENT_RIG_SCHEMA,
+        motions_schema: CURRENT_MOTIONS_SCHEMA,
+        status: "compatible".to_string(),
+    })
+}
+
+pub fn list_project_backups(root: &Path) -> HostResult<Vec<ProjectBackupV1>> {
+    let root = canonical_directory(root, "backup_list")?;
+    let directory = root.join(BACKUP_DIRECTORY);
+    if !directory.exists() {
+        return Ok(Vec::new());
+    }
+    let mut backups = Vec::new();
+    for entry in
+        fs::read_dir(&directory).map_err(|error| io_error("backup_list", &directory, error))?
+    {
+        let path = entry
+            .map_err(|error| io_error("backup_list", &directory, error))?
+            .path();
+        if !path.is_dir() {
+            continue;
+        }
+        let metadata_path = path.join(BACKUP_METADATA_FILE);
+        if let Ok(metadata) = read_json::<ProjectBackupV1>(&metadata_path, "backup_metadata") {
+            if metadata.schema_version == 1
+                && path.file_name().and_then(|value| value.to_str()) == Some(&metadata.backup_id)
+            {
+                backups.push(metadata);
+            }
+        }
+    }
+    backups.sort_by_key(|backup| std::cmp::Reverse(backup.created_at_unix_ms));
+    Ok(backups)
+}
+
+pub fn restore_project_backup(root: &Path, backup_id: &str) -> HostResult<SaveResult> {
+    let root = canonical_directory(root, "backup_restore")?;
+    validate_backup_id(backup_id)?;
+    let backup_root = root.join(BACKUP_DIRECTORY).join(backup_id);
+    let snapshot = read_project(&backup_root)?;
+    validate_snapshot(&snapshot)?;
+    let safety_backup = create_durable_backup(&root, "before_restore")?;
+    transactional_replace(&root, &snapshot_writes(&snapshot, true)?, None)?;
+    let restored = read_project(&root)?;
+    Ok(SaveResult {
+        root: root.display().to_string(),
+        signature: document_signature(&restored)?,
+        backup_id: safety_backup,
+    })
+}
+
+fn create_durable_backup(root: &Path, reason: &str) -> HostResult<Option<String>> {
+    if !root.join(MANIFEST_FILE).exists() {
+        return Ok(None);
+    }
+    let current = read_project(root)?;
+    let created_at_unix_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |duration| duration.as_millis() as u64);
+    let backup_id = format!("{created_at_unix_ms}-{}", Uuid::new_v4());
+    let backup_root = root.join(BACKUP_DIRECTORY).join(&backup_id);
+    fs::create_dir_all(&backup_root)
+        .map_err(|error| io_error("backup_create", &backup_root, error))?;
+    let result = (|| -> HostResult<()> {
+        for (relative, bytes) in snapshot_writes(&current, true)? {
+            let destination = backup_root.join(&relative);
+            if let Some(parent) = destination.parent() {
+                fs::create_dir_all(parent)
+                    .map_err(|error| io_error("backup_create", parent, error))?;
+            }
+            write_bytes_synced(&destination, &bytes, "backup_write")?;
+        }
+        let metadata = ProjectBackupV1 {
+            schema_version: 1,
+            backup_id: backup_id.clone(),
+            project_id: current.manifest.project_id.clone(),
+            created_at_unix_ms,
+            document_signature: document_signature(&current)?,
+            reason: reason.to_string(),
+        };
+        write_bytes_synced(
+            &backup_root.join(BACKUP_METADATA_FILE),
+            &canonical_json(&metadata)?,
+            "backup_metadata",
+        )
+    })();
+    if let Err(error) = result {
+        let _ = fs::remove_dir_all(&backup_root);
+        return Err(error);
+    }
+    prune_backups(root)?;
+    Ok(Some(backup_id))
+}
+
+fn snapshot_writes(
+    snapshot: &ProjectSnapshot,
+    include_artwork: bool,
+) -> HostResult<Vec<(PathBuf, Vec<u8>)>> {
+    let mut writes = vec![
+        (
+            PathBuf::from(MANIFEST_FILE),
+            canonical_json(&snapshot.manifest)?,
+        ),
+        (
+            PathBuf::from(&snapshot.manifest.files.rig),
+            canonical_json(&snapshot.rig)?,
+        ),
+        (
+            PathBuf::from(&snapshot.manifest.files.motions),
+            canonical_json(&snapshot.motions)?,
+        ),
+        (
+            PathBuf::from(&snapshot.manifest.files.editor),
+            canonical_json(&snapshot.editor)?,
+        ),
+    ];
+    if include_artwork {
+        writes.push((
+            PathBuf::from(&snapshot.manifest.files.artwork),
+            snapshot.artwork.as_bytes().to_vec(),
+        ));
+    }
+    Ok(writes)
+}
+
+fn write_bytes_synced(path: &Path, bytes: &[u8], stage: &str) -> HostResult<()> {
+    let mut file = File::create(path).map_err(|error| io_error(stage, path, error))?;
+    file.write_all(bytes)
+        .map_err(|error| io_error(stage, path, error))?;
+    file.sync_all()
+        .map_err(|error| io_error(stage, path, error))
+}
+
+fn prune_backups(root: &Path) -> HostResult<()> {
+    for backup in list_project_backups(root)?
+        .into_iter()
+        .skip(BACKUP_RETENTION)
+    {
+        let path = root.join(BACKUP_DIRECTORY).join(&backup.backup_id);
+        fs::remove_dir_all(&path).map_err(|error| io_error("backup_prune", &path, error))?;
+    }
+    Ok(())
+}
+
+fn validate_backup_id(backup_id: &str) -> HostResult<()> {
+    if backup_id.is_empty()
+        || !backup_id
+            .chars()
+            .all(|value| value.is_ascii_alphanumeric() || value == '-')
+    {
+        return Err(HostError::new(
+            "invalid_backup_id",
+            "backup_restore",
+            None,
+            "backup id is invalid",
+        ));
+    }
+    Ok(())
 }
 
 pub fn document_signature(snapshot: &ProjectSnapshot) -> HostResult<String> {
@@ -124,6 +299,47 @@ pub fn validate_snapshot(snapshot: &ProjectSnapshot) -> HostResult<()> {
         ));
     }
     validate_document(&snapshot.manifest, &snapshot.rig, &snapshot.motions)
+}
+
+pub fn export_canonical_assets(
+    target: &Path,
+    snapshot: &ProjectSnapshot,
+) -> HostResult<crate::models::CanonicalExportResult> {
+    validate_snapshot(snapshot)?;
+    let target = canonical_directory(target, "export_target")?;
+    let rig_id = snapshot.manifest.character_rig_id.as_str();
+    if rig_id.is_empty()
+        || !rig_id
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+    {
+        return Err(HostError::new(
+            "invalid_rig_id",
+            "export_validate",
+            None,
+            "rigId must contain only ASCII letters, digits, '-' or '_' for file export",
+        ));
+    }
+
+    let rig_name = format!("{rig_id}.rig.v1.json");
+    let motions_name = format!("{rig_id}.motions.v1.json");
+    transactional_replace(
+        &target,
+        &[
+            (PathBuf::from(&rig_name), canonical_json(&snapshot.rig)?),
+            (
+                PathBuf::from(&motions_name),
+                canonical_json(&snapshot.motions)?,
+            ),
+        ],
+        None,
+    )?;
+
+    Ok(crate::models::CanonicalExportResult {
+        directory: target.display().to_string(),
+        rig_path: target.join(rig_name).display().to_string(),
+        motions_path: target.join(motions_name).display().to_string(),
+    })
 }
 
 fn validate_document(manifest: &ProjectManifestV1, rig: &Value, motions: &Value) -> HostResult<()> {
@@ -589,6 +805,58 @@ mod tests {
             b"old-second"
         );
     }
+
+    #[test]
+    fn save_keeps_a_restorable_previous_version() {
+        let directory = tempdir().unwrap();
+        let original = snapshot();
+        let first = save_project(directory.path(), &original, true).unwrap();
+        assert!(first.backup_id.is_none());
+
+        let mut changed = original.clone();
+        changed.motions["revision"] = json!(2);
+        let second = save_project(directory.path(), &changed, false).unwrap();
+        let backup_id = second
+            .backup_id
+            .expect("existing project should be backed up");
+        let backups = list_project_backups(directory.path()).unwrap();
+        assert_eq!(backups.len(), 1);
+        assert_eq!(backups[0].backup_id, backup_id);
+
+        restore_project_backup(directory.path(), &backup_id).unwrap();
+        let restored = read_project(directory.path()).unwrap();
+        assert_eq!(restored.motions, original.motions);
+        assert_eq!(list_project_backups(directory.path()).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn rejects_unknown_schema_before_writing_or_backing_up() {
+        let directory = tempdir().unwrap();
+        let mut candidate = snapshot();
+        candidate.manifest.schema_version = 2;
+        let error = save_project(directory.path(), &candidate, true).unwrap_err();
+        assert_eq!(error.code, "unsupported_schema");
+        assert!(!directory.path().join(BACKUP_DIRECTORY).exists());
+    }
+
+    #[test]
+    fn exports_two_canonical_assets_to_the_selected_directory() {
+        let directory = tempdir().unwrap();
+        let result = export_canonical_assets(directory.path(), &snapshot()).unwrap();
+
+        assert_eq!(
+            Path::new(&result.directory),
+            directory.path().canonicalize().unwrap()
+        );
+        assert!(Path::new(&result.rig_path).is_file());
+        assert!(Path::new(&result.motions_path).is_file());
+        let rig: Value = read_json(Path::new(&result.rig_path), "test_read_rig").unwrap();
+        let motions: Value =
+            read_json(Path::new(&result.motions_path), "test_read_motions").unwrap();
+        assert_eq!(rig["rigId"], "xiaoluobao");
+        assert_eq!(motions["rigId"], "xiaoluobao");
+    }
+
     #[test]
     fn startup_recovery_restores_interrupted_journal() {
         let directory = tempdir().unwrap();

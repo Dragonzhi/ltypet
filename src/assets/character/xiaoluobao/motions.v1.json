@@ -1,137 +1,619 @@
 {
-  "schemaVersion": 1,
-  "rigId": "xiaoluobao",
   "clips": [
     {
-      "id": "bow",
-      "fps": 24,
       "durationFrames": 42,
+      "events": [],
+      "fps": 24,
+      "id": "bow",
       "loop": "none",
+      "suppressProceduralChannels": [
+        "breathing",
+        "pointer-follow"
+      ],
       "tracks": [
         {
-          "partId": "arm_left",
           "keyframes": [
-            { "frame": 0, "values": { "x": 0, "y": 0, "rotation": 0, "renderSlot": "body" }, "easing": "easeInOut" },
-            { "frame": 10, "values": { "x": 0.12, "y": 0.16, "rotation": 12 }, "easing": "easeInOut" },
-            { "frame": 22, "values": { "x": 0.18, "y": 0.46, "rotation": 21 }, "easing": "easeInOut" },
-            { "frame": 31, "values": { "x": 0.12, "y": 0.16, "rotation": 10 }, "easing": "easeInOut" },
-            { "frame": 42, "values": { "x": 0, "y": 0, "rotation": 0, "renderSlot": "body" }, "easing": "easeInOut" }
-          ]
+            {
+              "easing": "easeInOut",
+              "frame": 0,
+              "values": {
+                "renderSlot": "body",
+                "rotation": 0,
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 10,
+              "values": {
+                "rotation": 12,
+                "x": 0.12,
+                "y": 0.16
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 22,
+              "values": {
+                "rotation": 21,
+                "x": 0.18,
+                "y": 0.46
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 31,
+              "values": {
+                "rotation": 10,
+                "x": 0.12,
+                "y": 0.16
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 42,
+              "values": {
+                "renderSlot": "body",
+                "rotation": 0,
+                "x": 0,
+                "y": 0
+              }
+            }
+          ],
+          "partId": "arm_left"
         },
         {
-          "partId": "arm_right",
           "keyframes": [
-            { "frame": 0, "values": { "x": 0, "y": 0, "rotation": 0, "renderSlot": "body" }, "easing": "easeInOut" },
-            { "frame": 10, "values": { "x": -0.12, "y": 0.16, "rotation": -12 }, "easing": "easeInOut" },
-            { "frame": 22, "values": { "x": -0.18, "y": 0.46, "rotation": -21 }, "easing": "easeInOut" },
-            { "frame": 31, "values": { "x": -0.12, "y": 0.16, "rotation": -10 }, "easing": "easeInOut" },
-            { "frame": 42, "values": { "x": 0, "y": 0, "rotation": 0, "renderSlot": "body" }, "easing": "easeInOut" }
-          ]
+            {
+              "easing": "easeInOut",
+              "frame": 0,
+              "values": {
+                "renderSlot": "body",
+                "rotation": 0,
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 10,
+              "values": {
+                "rotation": -12,
+                "x": -0.12,
+                "y": 0.16
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 22,
+              "values": {
+                "rotation": -21,
+                "x": -0.18,
+                "y": 0.46
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 31,
+              "values": {
+                "rotation": -10,
+                "x": -0.12,
+                "y": 0.16
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 42,
+              "values": {
+                "renderSlot": "body",
+                "rotation": 0,
+                "x": 0,
+                "y": 0
+              }
+            }
+          ],
+          "partId": "arm_right"
         },
         {
-          "partId": "body",
           "keyframes": [
-            { "frame": 0, "values": { "x": 0, "y": 0, "rotation": 0, "scaleX": 1, "scaleY": 1 }, "easing": "easeInOut" },
-            { "frame": 10, "values": { "y": 0.18, "rotation": 1.2, "scaleX": 1.005, "scaleY": 0.995 }, "easing": "easeInOut" },
-            { "frame": 22, "values": { "y": 0.58, "rotation": 2.8, "scaleX": 1.012, "scaleY": 0.982 }, "easing": "easeInOut" },
-            { "frame": 31, "values": { "y": 0.18, "rotation": 0.8, "scaleX": 1.005, "scaleY": 0.995 }, "easing": "easeInOut" },
-            { "frame": 42, "values": { "x": 0, "y": 0, "rotation": 0, "scaleX": 1, "scaleY": 1 }, "easing": "easeInOut" }
-          ]
+            {
+              "easing": "easeInOut",
+              "frame": 0,
+              "values": {
+                "rotation": 0,
+                "scaleX": 1,
+                "scaleY": 1,
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 10,
+              "values": {
+                "rotation": 1.2,
+                "scaleX": 1.005,
+                "scaleY": 0.995,
+                "y": 0.18
+              }
+            },
+            {
+              "easing": "easeOut",
+              "frame": 22,
+              "values": {
+                "opacity": 1,
+                "rotation": 3.8492668732890554,
+                "scaleX": 1.012,
+                "scaleY": 0.982,
+                "x": 0,
+                "y": 0.58
+              }
+            },
+            {
+              "easing": "easeOut",
+              "frame": 29,
+              "values": {
+                "opacity": 1,
+                "rotation": 3.8492668732890554,
+                "scaleX": 1.012,
+                "scaleY": 0.982,
+                "x": 0,
+                "y": 0.58
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 42,
+              "values": {
+                "rotation": 0,
+                "scaleX": 1,
+                "scaleY": 1,
+                "x": 0,
+                "y": 0
+              }
+            }
+          ],
+          "partId": "body"
         },
         {
-          "partId": "head",
           "keyframes": [
-            { "frame": 0, "values": { "x": 0, "y": 0, "rotation": 0 }, "easing": "easeInOut" },
-            { "frame": 9, "values": { "y": 0.3, "rotation": 2.5 }, "easing": "easeInOut" },
-            { "frame": 22, "values": { "y": 1.05, "rotation": 7.5 }, "easing": "easeInOut" },
-            { "frame": 28, "values": { "y": 1.02, "rotation": 7.1 }, "easing": "easeInOut" },
-            { "frame": 34, "values": { "y": 0.2, "rotation": 1.8 }, "easing": "easeOut" },
-            { "frame": 42, "values": { "x": 0, "y": 0, "rotation": 0 }, "easing": "easeInOut" }
-          ]
+            {
+              "easing": "easeInOut",
+              "frame": 0,
+              "values": {
+                "rotation": 0,
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 9,
+              "values": {
+                "rotation": 2.5,
+                "y": 0.3
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 22,
+              "values": {
+                "rotation": 7.5,
+                "y": 1.05
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 28,
+              "values": {
+                "rotation": 7.1,
+                "y": 1.02
+              }
+            },
+            {
+              "easing": "easeOut",
+              "frame": 34,
+              "values": {
+                "rotation": 1.8,
+                "y": 0.2
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 42,
+              "values": {
+                "rotation": 0,
+                "x": 0,
+                "y": 0
+              }
+            }
+          ],
+          "partId": "head"
         }
-      ],
-      "events": [],
-      "suppressProceduralChannels": ["breathing", "pointer-follow"]
+      ]
     },
     {
-      "id": "stretch",
-      "fps": 24,
       "durationFrames": 52,
+      "events": [],
+      "fps": 24,
+      "id": "stretch",
       "loop": "none",
+      "suppressProceduralChannels": [
+        "breathing",
+        "pointer-follow"
+      ],
       "tracks": [
         {
-          "partId": "arm_left",
           "keyframes": [
-            { "frame": 0, "values": { "x": 0, "y": 0, "rotation": 0, "renderSlot": "body" }, "easing": "easeInOut" },
-            { "frame": 8, "values": { "x": -0.1, "y": -0.18, "rotation": 16, "renderSlot": "front" }, "easing": "easeInOut" },
-            { "frame": 20, "values": { "x": -0.22, "y": -0.54, "rotation": 44 }, "easing": "easeOut" },
-            { "frame": 31, "values": { "x": -0.24, "y": -0.6, "rotation": 48 }, "easing": "easeInOut" },
-            { "frame": 43, "values": { "x": -0.08, "y": -0.14, "rotation": 12 }, "easing": "easeInOut" },
-            { "frame": 47, "values": { "x": -0.03, "y": -0.05, "rotation": 4, "renderSlot": "body" }, "easing": "easeInOut" },
-            { "frame": 52, "values": { "x": 0, "y": 0, "rotation": 0 }, "easing": "easeInOut" }
-          ]
+            {
+              "easing": "easeInOut",
+              "frame": 0,
+              "values": {
+                "renderSlot": "body",
+                "rotation": 0,
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 8,
+              "values": {
+                "renderSlot": "front",
+                "rotation": 16,
+                "x": -0.1,
+                "y": -0.18
+              }
+            },
+            {
+              "easing": "easeOut",
+              "frame": 20,
+              "values": {
+                "rotation": 44,
+                "x": -0.22,
+                "y": -0.54
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 31,
+              "values": {
+                "rotation": 48,
+                "x": -0.24,
+                "y": -0.6
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 43,
+              "values": {
+                "rotation": 12,
+                "x": -0.08,
+                "y": -0.14
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 47,
+              "values": {
+                "renderSlot": "body",
+                "rotation": 4,
+                "x": -0.03,
+                "y": -0.05
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 52,
+              "values": {
+                "rotation": 0,
+                "x": 0,
+                "y": 0
+              }
+            }
+          ],
+          "partId": "arm_left"
         },
         {
-          "partId": "arm_right",
           "keyframes": [
-            { "frame": 0, "values": { "x": 0, "y": 0, "rotation": 0, "renderSlot": "body" }, "easing": "easeInOut" },
-            { "frame": 8, "values": { "x": 0.1, "y": -0.18, "rotation": -16, "renderSlot": "front" }, "easing": "easeInOut" },
-            { "frame": 20, "values": { "x": 0.22, "y": -0.54, "rotation": -44 }, "easing": "easeOut" },
-            { "frame": 31, "values": { "x": 0.24, "y": -0.6, "rotation": -48 }, "easing": "easeInOut" },
-            { "frame": 43, "values": { "x": 0.08, "y": -0.14, "rotation": -12 }, "easing": "easeInOut" },
-            { "frame": 47, "values": { "x": 0.03, "y": -0.05, "rotation": -4, "renderSlot": "body" }, "easing": "easeInOut" },
-            { "frame": 52, "values": { "x": 0, "y": 0, "rotation": 0 }, "easing": "easeInOut" }
-          ]
+            {
+              "easing": "easeInOut",
+              "frame": 0,
+              "values": {
+                "renderSlot": "body",
+                "rotation": 0,
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 8,
+              "values": {
+                "renderSlot": "front",
+                "rotation": -16,
+                "x": 0.1,
+                "y": -0.18
+              }
+            },
+            {
+              "easing": "easeOut",
+              "frame": 20,
+              "values": {
+                "rotation": -44,
+                "x": 0.22,
+                "y": -0.54
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 31,
+              "values": {
+                "rotation": -48,
+                "x": 0.24,
+                "y": -0.6
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 43,
+              "values": {
+                "rotation": -12,
+                "x": 0.08,
+                "y": -0.14
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 47,
+              "values": {
+                "renderSlot": "body",
+                "rotation": -4,
+                "x": 0.03,
+                "y": -0.05
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 52,
+              "values": {
+                "rotation": 0,
+                "x": 0,
+                "y": 0
+              }
+            }
+          ],
+          "partId": "arm_right"
         },
         {
-          "partId": "body",
           "keyframes": [
-            { "frame": 0, "values": { "x": 0, "y": 0, "rotation": 0, "scaleX": 1, "scaleY": 1 }, "easing": "easeInOut" },
-            { "frame": 10, "values": { "y": 0.12, "scaleX": 1.015, "scaleY": 0.99 }, "easing": "easeInOut" },
-            { "frame": 24, "values": { "y": -0.2, "scaleX": 0.985, "scaleY": 1.025 }, "easing": "easeOut" },
-            { "frame": 34, "values": { "y": -0.24, "scaleX": 0.982, "scaleY": 1.03 }, "easing": "easeInOut" },
-            { "frame": 44, "values": { "y": 0.08, "scaleX": 1.008, "scaleY": 0.996 }, "easing": "easeInOut" },
-            { "frame": 52, "values": { "x": 0, "y": 0, "rotation": 0, "scaleX": 1, "scaleY": 1 }, "easing": "easeInOut" }
-          ]
+            {
+              "easing": "easeInOut",
+              "frame": 0,
+              "values": {
+                "rotation": 0,
+                "scaleX": 1,
+                "scaleY": 1,
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 10,
+              "values": {
+                "scaleX": 1.015,
+                "scaleY": 0.99,
+                "y": 0.12
+              }
+            },
+            {
+              "easing": "easeOut",
+              "frame": 24,
+              "values": {
+                "scaleX": 0.985,
+                "scaleY": 1.025,
+                "y": -0.2
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 34,
+              "values": {
+                "scaleX": 0.982,
+                "scaleY": 1.03,
+                "y": -0.24
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 44,
+              "values": {
+                "scaleX": 1.008,
+                "scaleY": 0.996,
+                "y": 0.08
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 52,
+              "values": {
+                "rotation": 0,
+                "scaleX": 1,
+                "scaleY": 1,
+                "x": 0,
+                "y": 0
+              }
+            }
+          ],
+          "partId": "body"
         },
         {
-          "partId": "head",
           "keyframes": [
-            { "frame": 0, "values": { "x": 0, "y": 0, "rotation": 0 }, "easing": "easeInOut" },
-            { "frame": 12, "values": { "y": -0.12, "rotation": -1.5 }, "easing": "easeInOut" },
-            { "frame": 25, "values": { "y": -0.38, "rotation": -3.5 }, "easing": "easeOut" },
-            { "frame": 34, "values": { "y": -0.4, "rotation": -3.2 }, "easing": "easeInOut" },
-            { "frame": 45, "values": { "y": 0.06, "rotation": 0.8 }, "easing": "easeInOut" },
-            { "frame": 52, "values": { "x": 0, "y": 0, "rotation": 0 }, "easing": "easeInOut" }
-          ]
+            {
+              "easing": "easeInOut",
+              "frame": 0,
+              "values": {
+                "rotation": 0,
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 12,
+              "values": {
+                "rotation": -1.5,
+                "y": -0.12
+              }
+            },
+            {
+              "easing": "easeOut",
+              "frame": 25,
+              "values": {
+                "rotation": -3.5,
+                "y": -0.38
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 34,
+              "values": {
+                "rotation": -3.2,
+                "y": -0.4
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 45,
+              "values": {
+                "rotation": 0.8,
+                "y": 0.06
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 52,
+              "values": {
+                "rotation": 0,
+                "x": 0,
+                "y": 0
+              }
+            }
+          ],
+          "partId": "head"
         }
-      ],
-      "events": [],
-      "suppressProceduralChannels": ["breathing", "pointer-follow"]
+      ]
     },
     {
-      "id": "wave",
-      "fps": 24,
       "durationFrames": 38,
+      "events": [],
+      "fps": 24,
+      "id": "wave",
       "loop": "none",
       "tracks": [
         {
-          "partId": "arm_right",
           "keyframes": [
-            { "frame": 0, "values": { "x": 0, "y": 0, "rotation": 0, "renderSlot": "body" }, "easing": "easeInOut" },
-            { "frame": 3, "values": { "x": 0.34, "y": -0.16, "rotation": -18 }, "easing": "easeInOut" },
-            { "frame": 5, "values": { "x": 0.34, "y": -0.06, "rotation": -106, "renderSlot": "front" }, "easing": "easeInOut" },
-            { "frame": 12, "values": { "x": 0.34, "y": -0.06, "rotation": -90 }, "easing": "easeInOut" },
-            { "frame": 17, "values": { "x": 0.34, "y": -0.06, "rotation": -112 }, "easing": "easeInOut" },
-            { "frame": 23, "values": { "x": 0.34, "y": -0.06, "rotation": -90 }, "easing": "easeInOut" },
-            { "frame": 28, "values": { "x": 0.34, "y": -0.06, "rotation": -112 }, "easing": "easeInOut" },
-            { "frame": 33, "values": { "x": 0.34, "y": -0.06, "rotation": -104 }, "easing": "easeInOut" },
-            { "frame": 35, "values": { "x": 0.34, "y": -0.16, "rotation": -12, "renderSlot": "body" }, "easing": "easeInOut" },
-            { "frame": 38, "values": { "x": 0, "y": 0, "rotation": 0 }, "easing": "easeInOut" }
-          ]
+            {
+              "easing": "easeInOut",
+              "frame": 0,
+              "values": {
+                "renderSlot": "body",
+                "rotation": 0,
+                "x": 0,
+                "y": 0
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 3,
+              "values": {
+                "rotation": -18,
+                "x": 0.34,
+                "y": -0.16
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 5,
+              "values": {
+                "renderSlot": "front",
+                "rotation": -106,
+                "x": 0.34,
+                "y": -0.06
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 12,
+              "values": {
+                "rotation": -90,
+                "x": 0.34,
+                "y": -0.06
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 17,
+              "values": {
+                "rotation": -112,
+                "x": 0.34,
+                "y": -0.06
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 23,
+              "values": {
+                "rotation": -90,
+                "x": 0.34,
+                "y": -0.06
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 28,
+              "values": {
+                "rotation": -112,
+                "x": 0.34,
+                "y": -0.06
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 33,
+              "values": {
+                "rotation": -104,
+                "x": 0.34,
+                "y": -0.06
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 35,
+              "values": {
+                "renderSlot": "body",
+                "rotation": -12,
+                "x": 0.34,
+                "y": -0.16
+              }
+            },
+            {
+              "easing": "easeInOut",
+              "frame": 38,
+              "values": {
+                "rotation": 0,
+                "x": 0,
+                "y": 0
+              }
+            }
+          ],
+          "partId": "arm_right"
         }
-      ],
-      "events": []
+      ]
     }
-  ]
+  ],
+  "rigId": "xiaoluobao",
+  "schemaVersion": 1
 }

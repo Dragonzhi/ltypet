@@ -32,6 +32,7 @@ tools/motion-editor/src-tauri/target/
 
 # npm / node
 package-lock.json
+!package-lock.json
 !tools/motion-editor/package-lock.json
 !packages/character-motion/package-lock.json
 

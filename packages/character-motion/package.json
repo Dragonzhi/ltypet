@@ -5,8 +5,12 @@
   "type": "module",
   "description": "Shared core package for character rigging, motion sampling, and animation math",
   "scripts": {
+    "generate:validators": "node scripts/generate-validators.mjs",
+    "pretest": "npm run generate:validators",
     "test": "vitest run",
+    "pretypecheck": "npm run generate:validators",
     "typecheck": "tsc --noEmit",
+    "prebuild": "npm run generate:validators",
     "build": "tsc -p tsconfig.build.json",
     "prepublishOnly": "npm run typecheck && npm run build"
   },

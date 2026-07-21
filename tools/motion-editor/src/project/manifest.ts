@@ -53,6 +53,34 @@ export interface RecentMotionEditorProjectV1 {
 export interface MotionEditorSaveResult {
   root: string;
   signature: string;
+  backupId?: string;
+}
+
+export interface MotionEditorProjectBackupV1 {
+  schemaVersion: 1;
+  backupId: string;
+  projectId: string;
+  createdAtUnixMs: number;
+  documentSignature: string;
+  reason: "before_save" | "before_restore" | string;
+}
+
+export interface MotionEditorSchemaCompatibility {
+  editorVersion: string;
+  projectSchema: 1;
+  rigSchema: 1;
+  motionsSchema: 1;
+  status: "compatible";
+}
+
+export interface MotionEditorDiagnosticExport {
+  path?: string;
+}
+
+export interface MotionEditorCanonicalExportResult {
+  directory: string;
+  rigPath: string;
+  motionsPath: string;
 }
 
 export interface ProductionPublishPlan {
@@ -73,6 +101,6 @@ export interface ProductionPublishDiff {
 export interface MotionEditorHostError {
   code: string;
   stage: string;
-  path?: string;
+  path?: string | null;
   message: string;
 }

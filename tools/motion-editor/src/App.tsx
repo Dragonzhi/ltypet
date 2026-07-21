@@ -8,8 +8,6 @@ import type {
 } from "@ltypet/character-motion";
 import {
   sampleMotionClip,
-  serializeMotionLibrary,
-  serializeRig,
   validateMotionLibrary,
 } from "@ltypet/character-motion";
 import builtInArtwork from "../../../src/assets/character/xiaoluobao/artwork.svg?raw";
@@ -44,10 +42,12 @@ import {
 } from "./project/v1Project";
 import type {
   MotionEditorProjectManifestV1,
+  MotionEditorProjectBackupV1,
   MotionEditorProjectSnapshot,
   MotionEditorRecoverySnapshotV1,
   ProductionPublishPlan,
   RecentMotionEditorProjectV1,
+  MotionEditorSchemaCompatibility,
 } from "./project/manifest";
 import type { MotionEditorHost } from "./host/MotionEditorHost";
 import { createTauriMotionEditorHost, MotionEditorHostRequestError } from "./host/TauriMotionEditorHost";
@@ -82,18 +82,7 @@ const PROCEDURAL_CHANNELS: ProceduralChannel[] = [
   "hair-physics",
   "ear-twitch",
 ];
-
-function downloadText(name: string, text: string) {
-  const anchor = document.createElement("a");
-  // A data URL keeps the export self-contained. Revoking a blob URL after
-  // click() proved racy in Chromium/headless and could silently cancel files.
-  anchor.href = `data:application/json;charset=utf-8,${encodeURIComponent(text)}`;
-  anchor.download = name;
-  anchor.style.display = "none";
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-}
+const PRODUCTION_PUBLISH_AVAILABLE = import.meta.env.DEV;
 
 function cloneClip(clip: MotionClipV1, id: string): MotionClipV1 {
   return {
@@ -120,7 +109,15 @@ function formatError(error: unknown): string {
   if (error instanceof MotionEditorHostRequestError) {
     return `${error.message}（${error.stage}/${error.code}${error.path ? `：${error.path}` : ""}）`;
   }
-  return error instanceof Error ? error.message : String(error);
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error !== null) {
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return "未知结构化错误";
+    }
+  }
+  return String(error);
 }
 
 async function sha256Text(text: string): Promise<string> {
@@ -153,6 +150,8 @@ export default function App() {
   const [host, setHost] = useState<MotionEditorHost | null>(null);
   const [hostReady, setHostReady] = useState(false);
   const [recentProjects, setRecentProjects] = useState<RecentMotionEditorProjectV1[]>([]);
+  const [projectBackups, setProjectBackups] = useState<MotionEditorProjectBackupV1[]>([]);
+  const [compatibility, setCompatibility] = useState<MotionEditorSchemaCompatibility | null>(null);
   const [recoveryCandidates, setRecoveryCandidates] = useState<MotionEditorRecoverySnapshotV1[]>([]);
   const [publishPlan, setPublishPlan] = useState<ProductionPublishPlan | null>(null);
   const [hostBusy, setHostBusy] = useState(false);
@@ -326,6 +325,10 @@ export default function App() {
     setFingerprint(opened.fingerprint);
     setManifest(snapshot.manifest);
     setProjectRoot(options.root);
+    if (!options.root) {
+      setProjectBackups([]);
+      setCompatibility(null);
+    }
     setSavedHostSignature(options.savedSignature ?? await sha256Text(projectDocumentText(snapshot)));
     setDiagnostics([...imported.diagnostics, ...bound.diagnostics]);
     setImportResult(bound);
@@ -370,7 +373,14 @@ export default function App() {
     try {
       const snapshot = await host.readProject(root);
       await applyOpenedProject(snapshot, { root });
-      setRecentProjects(await host.listRecentProjects());
+      const [recent, backups, schema] = await Promise.all([
+        host.listRecentProjects(),
+        host.listProjectBackups(root),
+        host.getProjectCompatibility(root),
+      ]);
+      setRecentProjects(recent);
+      setProjectBackups(backups);
+      setCompatibility(schema);
     } catch (error: unknown) {
       addLog(`[错误] 打开项目失败：${formatError(error)}`);
     } finally {
@@ -386,7 +396,14 @@ export default function App() {
       if (!root) return;
       const snapshot = await host.readProject(root);
       await applyOpenedProject(snapshot, { root });
-      setRecentProjects(await host.listRecentProjects());
+      const [recent, backups, schema] = await Promise.all([
+        host.listRecentProjects(),
+        host.listProjectBackups(root),
+        host.getProjectCompatibility(root),
+      ]);
+      setRecentProjects(recent);
+      setProjectBackups(backups);
+      setCompatibility(schema);
     } catch (error: unknown) {
       addLog(`[错误] 打开项目失败：${formatError(error)}`);
     } finally {
@@ -832,6 +849,16 @@ export default function App() {
     if (host) setRecentProjects(await host.listRecentProjects());
   };
 
+  const refreshProjectSafety = async (root: string) => {
+    if (!host) return;
+    const [backups, schema] = await Promise.all([
+      host.listProjectBackups(root),
+      host.getProjectCompatibility(root),
+    ]);
+    setProjectBackups(backups);
+    setCompatibility(schema);
+  };
+
   const saveProject = async () => {
     const snapshot = createSnapshot();
     if (!host || !projectRoot || !snapshot) return;
@@ -844,7 +871,8 @@ export default function App() {
       await host.discardRecovery(snapshot.manifest.projectId);
       setRecoveryCandidates((current) => current.filter((item) => item.metadata.projectId !== snapshot.manifest.projectId));
       await refreshRecentProjects();
-      addLog(`[信息] 项目保存成功：${result.root}`);
+      await refreshProjectSafety(result.root);
+      addLog(`[信息] 项目保存成功：${result.root}${result.backupId ? `；已保留备份 ${result.backupId}` : ""}`);
     } catch (error: unknown) {
       addLog(`[错误] 项目保存失败，修改仍标记为未保存：${formatError(error)}`);
     } finally {
@@ -866,11 +894,39 @@ export default function App() {
       await host.discardRecovery(snapshot.manifest.projectId);
       setRecoveryCandidates((current) => current.filter((item) => item.metadata.projectId !== snapshot.manifest.projectId));
       await refreshRecentProjects();
+      await refreshProjectSafety(result.root);
       addLog(`[信息] 项目另存成功：${result.root}`);
     } catch (error: unknown) {
       addLog(`[错误] 项目另存失败，修改仍标记为未保存：${formatError(error)}`);
     } finally {
       setHostBusy(false);
+    }
+  };
+
+  const restoreBackup = async (backup: MotionEditorProjectBackupV1) => {
+    if (!host || !projectRoot) return;
+    if (!window.confirm(`恢复 ${new Date(backup.createdAtUnixMs).toLocaleString()} 的项目版本？当前版本会先自动备份。`)) return;
+    setHostBusy(true);
+    try {
+      const result = await host.restoreProjectBackup(projectRoot, backup.backupId);
+      const snapshot = await host.readProject(result.root);
+      await applyOpenedProject(snapshot, { root: result.root, savedSignature: result.signature });
+      await refreshProjectSafety(result.root);
+      addLog(`[信息] 已恢复备份 ${backup.backupId}；恢复前版本也已保留`);
+    } catch (error: unknown) {
+      addLog(`[错误] 备份恢复失败，当前项目未被替换：${formatError(error)}`);
+    } finally {
+      setHostBusy(false);
+    }
+  };
+
+  const exportDiagnostics = async () => {
+    if (!host) return;
+    try {
+      const result = await host.exportDiagnostics();
+      addLog(result.path ? `[信息] 已导出脱敏诊断：${result.path}` : "[信息] 已取消诊断导出");
+    } catch (error: unknown) {
+      addLog(`[错误] 诊断导出失败：${formatError(error)}`);
     }
   };
 
@@ -945,11 +1001,20 @@ export default function App() {
     };
   }, [addLog, createSnapshot, dirty, host, projectRoot, savedHostSignature]);
 
-  const exportProject = () => {
-    if (!history) return;
-    downloadText(`${history.present.rig.rigId}.rig.v1.json`, serializeRig(history.present.rig));
-    downloadText(`${history.present.rig.rigId}.motions.v1.json`, serializeMotionLibrary(history.present.motions));
-    addLog(`[信息] 已导出下载 rig 和 motions：${history.present.motions.clips.length} 个 Clip；下载不等同于项目保存`);
+  const exportProject = async () => {
+    const snapshot = createSnapshot();
+    if (!host || !snapshot) return;
+    setHostBusy(true);
+    try {
+      const result = await host.exportCanonicalAssets(snapshot);
+      addLog(result
+        ? `[信息] 已导出 rig 和 motions：${snapshot.motions.clips.length} 个 Clip；目录：${result.directory}`
+        : "[信息] 已取消 rig 和 motions 导出");
+    } catch (error: unknown) {
+      addLog(`[错误] rig 和 motions 导出失败：${formatError(error)}`);
+    } finally {
+      setHostBusy(false);
+    }
   };
 
   useEffect(() => () => {
@@ -969,7 +1034,7 @@ export default function App() {
   return (
     <div className="app p4-editor">
       <header className="toolbar">
-        <h1>小洛宝 Animation Studio · P4</h1>
+        <h1>小洛宝 Animation Studio</h1>
         <div className="controls">
           <button type="button" onClick={() => void handleLoadCharacter()} disabled={!adapterRef.current || hostBusy}>载入内置小洛宝</button>
           {host && <button type="button" onClick={() => void chooseAndOpenProject()} disabled={hostBusy}>打开项目目录</button>}
@@ -977,8 +1042,18 @@ export default function App() {
           {host && <button type="button" onClick={() => void saveProjectAs()} disabled={!history || hostBusy}>另存为</button>}
           <button type="button" onClick={() => rigInputRef.current?.click()} disabled={!rig}>导入 Rig</button>
           <button type="button" onClick={() => motionInputRef.current?.click()} disabled={!rig}>导入动作</button>
-          <button type="button" onClick={exportProject} disabled={!history}>导出下载</button>
-          {host && <button type="button" onClick={() => void preparePublish()} disabled={!history || hostBusy}>发布到正式资源</button>}
+          <button type="button" onClick={() => void exportProject()} disabled={!history || !host || hostBusy}>导出文件…</button>
+          {host && (
+            <button
+              type="button"
+              onClick={() => void preparePublish()}
+              disabled={!history || hostBusy || !PRODUCTION_PUBLISH_AVAILABLE}
+              title={PRODUCTION_PUBLISH_AVAILABLE ? "校验并发布到仓库正式小洛宝资源" : "仅仓库开发模式允许发布正式资源"}
+            >
+              {PRODUCTION_PUBLISH_AVAILABLE ? "发布到正式资源" : "发布到正式资源（仅开发模式）"}
+            </button>
+          )}
+          {host && <button type="button" onClick={() => void exportDiagnostics()} disabled={hostBusy}>导出诊断</button>}
           <button type="button" onClick={undo} disabled={!history?.past.length} aria-label="撤销">↶</button>
           <button type="button" onClick={redo} disabled={!history?.future.length} aria-label="重做">↷</button>
           <input ref={rigInputRef} type="file" accept=".json" hidden onChange={(event) => importTextFile(event, importRig)} />
@@ -1212,6 +1287,25 @@ export default function App() {
         <section className="panel diagnostics-section">
           <h2>诊断</h2>
           <p>{importResult ? `${importResult.parts.length} Part · ${importResult.pivotLocal.size} pivot` : "尚未载入"}</p>
+          <p>{compatibility
+            ? `兼容：项目 v${compatibility.projectSchema} / Rig v${compatibility.rigSchema} / Motions v${compatibility.motionsSchema}`
+            : "兼容范围：项目/Rig/Motions v1"}</p>
+          {projectRoot && (
+            <details>
+              <summary>项目备份（{projectBackups.length}/{5}）</summary>
+              {projectBackups.length === 0 ? <p>首次保存后开始保留旧版本</p> : (
+                <ul>
+                  {projectBackups.map((backup) => (
+                    <li key={backup.backupId}>
+                      <button type="button" disabled={hostBusy} onClick={() => void restoreBackup(backup)}>
+                        恢复 {new Date(backup.createdAtUnixMs).toLocaleString()}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </details>
+          )}
           <ul>{diagnostics.filter((item) => item.severity !== "info").map((item, index) => <li key={`${item.message}-${index}`} className={`diag-${item.severity}`}>{item.message}</li>)}</ul>
         </section>
         <section className="panel log-section">

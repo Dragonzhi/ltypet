@@ -103,6 +103,42 @@ pub type HostResult<T> = Result<T, HostError>;
 pub struct SaveResult {
     pub root: String,
     pub signature: String,
+    pub backup_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectBackupV1 {
+    pub schema_version: u8,
+    pub backup_id: String,
+    pub project_id: String,
+    pub created_at_unix_ms: u64,
+    pub document_signature: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaCompatibility {
+    pub editor_version: String,
+    pub project_schema: u8,
+    pub rig_schema: u8,
+    pub motions_schema: u8,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiagnosticExport {
+    pub path: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CanonicalExportResult {
+    pub directory: String,
+    pub rig_path: String,
+    pub motions_path: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

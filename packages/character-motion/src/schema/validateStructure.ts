@@ -1,27 +1,29 @@
 /**
- * JSON Schema structural validation using Ajv.
- * Validates raw input against the JSON Schema, then returns typed results.
+ * JSON Schema structural validation using build-time generated Ajv validators.
+ * Runtime code generation is intentionally forbidden so strict CSP remains viable.
  */
 
 import type { CharacterRigV1, MotionLibraryV1, ValidationResult, ValidationIssue } from "../types.js";
-import Ajv2020, { type ErrorObject } from "ajv/dist/2020.js";
-import rigSchema from "./rig.schema.json" with { type: "json" };
-import motionsSchema from "./motions.schema.json" with { type: "json" };
+import validateRigStandalone from "./generated/validateRig.generated.js";
+import validateMotionsStandalone from "./generated/validateMotions.generated.js";
 
-// ─── Pre-compiled Validators ─────────────────────────────────────
+interface StructuralValidationError {
+  keyword: string;
+  instancePath: string;
+  message?: string;
+}
 
-const ajv = new Ajv2020({
-  strict: true,
-  allErrors: true,
-  validateSchema: true,
-});
+interface StandaloneValidator {
+  (input: unknown): boolean;
+  errors?: StructuralValidationError[] | null;
+}
 
-const validateRigJson = ajv.compile(rigSchema);
-const validateMotionsJson = ajv.compile(motionsSchema);
+const validateRigJson = validateRigStandalone as StandaloneValidator;
+const validateMotionsJson = validateMotionsStandalone as StandaloneValidator;
 
 // ─── Error Conversion ────────────────────────────────────────────
 
-function ajvErrorsToIssues(errors: ErrorObject[] | null | undefined): ValidationIssue[] {
+function ajvErrorsToIssues(errors: StructuralValidationError[] | null | undefined): ValidationIssue[] {
   if (!errors) return [];
   return errors.map((err) => ({
     code: err.keyword || "schema",

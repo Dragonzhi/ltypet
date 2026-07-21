@@ -2,8 +2,12 @@ import type { MotionEditorHost } from "./MotionEditorHost";
 import type {
   MotionEditorHostError,
   MotionEditorProjectSnapshot,
+  MotionEditorCanonicalExportResult,
+  MotionEditorProjectBackupV1,
   MotionEditorRecoverySnapshotV1,
   MotionEditorSaveResult,
+  MotionEditorSchemaCompatibility,
+  MotionEditorDiagnosticExport,
   ProductionPublishPlan,
   RecentMotionEditorProjectV1,
 } from "../project/manifest";
@@ -20,7 +24,7 @@ export class MotionEditorHostRequestError extends Error implements MotionEditorH
     this.name = "MotionEditorHostRequestError";
     this.code = error.code;
     this.stage = error.stage;
-    this.path = error.path;
+    if (typeof error.path === "string") this.path = error.path;
   }
 }
 
@@ -47,6 +51,18 @@ export class TauriMotionEditorHost implements MotionEditorHost {
     return this.call("save_project_as", { target, snapshot });
   }
 
+  getProjectCompatibility(root: string): Promise<MotionEditorSchemaCompatibility> {
+    return this.call("get_project_compatibility", { root });
+  }
+
+  listProjectBackups(root: string): Promise<MotionEditorProjectBackupV1[]> {
+    return this.call("list_project_backups", { root });
+  }
+
+  restoreProjectBackup(root: string, backupId: string): Promise<MotionEditorSaveResult> {
+    return this.call("restore_project_backup", { root, backupId });
+  }
+
   listRecentProjects(): Promise<RecentMotionEditorProjectV1[]> {
     return this.call("list_recent_projects");
   }
@@ -65,6 +81,14 @@ export class TauriMotionEditorHost implements MotionEditorHost {
 
   discardRecovery(projectId: string): Promise<void> {
     return this.call("discard_recovery", { projectId });
+  }
+
+  exportDiagnostics(): Promise<MotionEditorDiagnosticExport> {
+    return this.call("export_diagnostics");
+  }
+
+  exportCanonicalAssets(snapshot: MotionEditorProjectSnapshot): Promise<MotionEditorCanonicalExportResult | null> {
+    return this.call("export_canonical_assets", { snapshot });
   }
 
   prepareProductionPublish(snapshot: MotionEditorProjectSnapshot): Promise<ProductionPublishPlan> {
@@ -106,5 +130,5 @@ function isHostError(value: unknown): value is MotionEditorHostError {
   return typeof candidate.code === "string"
     && typeof candidate.stage === "string"
     && typeof candidate.message === "string"
-    && (candidate.path === undefined || typeof candidate.path === "string");
+    && (candidate.path === undefined || candidate.path === null || typeof candidate.path === "string");
 }

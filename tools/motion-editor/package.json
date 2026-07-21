@@ -9,7 +9,12 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "tauri": "tauri",
-    "generate:rig": "vite-node scripts/generate-xiaoluobao-rig.ts"
+    "generate:rig": "vite-node scripts/generate-xiaoluobao-rig.ts",
+    "perf:baseline": "node scripts/performance-baseline.mjs",
+    "notices:generate": "node scripts/generate-license-manifest.mjs",
+    "release:check": "node scripts/release-check.mjs",
+    "build:portable": "tauri build --no-bundle",
+    "build:installer": "tauri build --bundles nsis"
   },
   "dependencies": {
     "@svgedit/svgcanvas": "7.4.2",

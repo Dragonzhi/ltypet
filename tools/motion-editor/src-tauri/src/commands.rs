@@ -1,6 +1,7 @@
 use crate::models::{
-    HostError, HostResult, ProjectSnapshot, PublishPlan, RecentProjectV1, RecoverySnapshotV1,
-    SaveResult,
+    CanonicalExportResult, DiagnosticExport, HostError, HostResult, ProjectBackupV1,
+    ProjectSnapshot, PublishPlan, RecentProjectV1, RecoverySnapshotV1, SaveResult,
+    SchemaCompatibility,
 };
 use crate::{project_io, publish, recovery, HostState};
 use std::path::{Path, PathBuf};
@@ -122,6 +123,34 @@ pub fn save_project_as(
 }
 
 #[tauri::command]
+pub fn get_project_compatibility(
+    root: String,
+    state: State<'_, HostState>,
+) -> HostResult<SchemaCompatibility> {
+    let root = authorize_existing_root(&state, &root)?;
+    project_io::compatibility(&project_io::read_project(&root)?)
+}
+
+#[tauri::command]
+pub fn list_project_backups(
+    root: String,
+    state: State<'_, HostState>,
+) -> HostResult<Vec<ProjectBackupV1>> {
+    let root = authorize_existing_root(&state, &root)?;
+    project_io::list_project_backups(&root)
+}
+
+#[tauri::command]
+pub fn restore_project_backup(
+    root: String,
+    backup_id: String,
+    state: State<'_, HostState>,
+) -> HostResult<SaveResult> {
+    let root = authorize_existing_root(&state, &root)?;
+    project_io::restore_project_backup(&root, &backup_id)
+}
+
+#[tauri::command]
 pub fn list_recent_projects(state: State<'_, HostState>) -> HostResult<Vec<RecentProjectV1>> {
     let recent = recovery::list_recent(&state.app_data)?;
     let mut known = state.known_roots.lock().map_err(lock_error)?;
@@ -159,6 +188,72 @@ pub fn write_recovery(
 #[tauri::command]
 pub fn discard_recovery(project_id: String, state: State<'_, HostState>) -> HostResult<()> {
     recovery::discard_recovery(&state.app_data, &project_id)
+}
+
+#[tauri::command]
+pub fn export_diagnostics(state: State<'_, HostState>) -> HostResult<DiagnosticExport> {
+    let selected = rfd::FileDialog::new()
+        .set_file_name("ltypet-animation-studio-diagnostics.json")
+        .add_filter("JSON", &["json"])
+        .save_file();
+    let Some(path) = selected else {
+        return Ok(DiagnosticExport { path: None });
+    };
+    let recent_count = recovery::list_recent(&state.app_data)?.len();
+    let recovery_count = recovery::read_recovery_candidates(&state.app_data)?.len();
+    let payload = serde_json::json!({
+        "schemaVersion": 1,
+        "application": "LTypet Animation Studio",
+        "applicationVersion": env!("CARGO_PKG_VERSION"),
+        "generatedAtUnixMs": now_unix_ms(),
+        "platform": {
+            "os": std::env::consts::OS,
+            "architecture": std::env::consts::ARCH
+        },
+        "supportedSchemas": {
+            "project": [project_io::CURRENT_PROJECT_SCHEMA, project_io::CURRENT_PROJECT_SCHEMA],
+            "rig": [project_io::CURRENT_RIG_SCHEMA, project_io::CURRENT_RIG_SCHEMA],
+            "motions": [project_io::CURRENT_MOTIONS_SCHEMA, project_io::CURRENT_MOTIONS_SCHEMA]
+        },
+        "localState": {
+            "recentProjectCount": recent_count,
+            "recoveryCandidateCount": recovery_count
+        },
+        "privacy": "No project paths, artwork, motion content, secrets, or user text are included."
+    });
+    let mut bytes = serde_json::to_vec_pretty(&payload).map_err(|error| {
+        HostError::new(
+            "serialize_failed",
+            "diagnostics_export",
+            Some(&path),
+            error.to_string(),
+        )
+    })?;
+    bytes.push(b'\n');
+    std::fs::write(&path, bytes).map_err(|error| {
+        HostError::new(
+            "io_error",
+            "diagnostics_export",
+            Some(&path),
+            error.to_string(),
+        )
+    })?;
+    Ok(DiagnosticExport {
+        path: Some(path.display().to_string()),
+    })
+}
+
+#[tauri::command]
+pub fn export_canonical_assets(
+    snapshot: ProjectSnapshot,
+) -> HostResult<Option<CanonicalExportResult>> {
+    let selected = rfd::FileDialog::new()
+        .set_title("选择 rig 与 motions 导出目录")
+        .pick_folder();
+    let Some(target) = selected else {
+        return Ok(None);
+    };
+    project_io::export_canonical_assets(&target, &snapshot).map(Some)
 }
 
 #[tauri::command]
@@ -278,8 +373,12 @@ fn recent_entry(snapshot: &ProjectSnapshot, root: &Path) -> RecentProjectV1 {
         project_id: snapshot.manifest.project_id.clone(),
         display_name: snapshot.manifest.display_name.clone(),
         root: root.display().to_string(),
-        opened_at_unix_ms: SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |duration| duration.as_millis() as u64),
+        opened_at_unix_ms: now_unix_ms(),
     }
+}
+
+fn now_unix_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |duration| duration.as_millis() as u64)
 }

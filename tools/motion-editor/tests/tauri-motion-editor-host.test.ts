@@ -89,4 +89,62 @@ describe("TauriMotionEditorHost", () => {
       ["cancel_production_publish", { planId: "plan-1" }],
     ]);
   });
+
+  it("accepts structured host errors whose optional path is null", async () => {
+    const invoke: TauriInvoke = async () => {
+      throw {
+        code: "publish_disabled",
+        stage: "publish_prepare",
+        path: null,
+        message: "disabled",
+      };
+    };
+    const host = new TauriMotionEditorHost(invoke);
+
+    await expect(host.prepareProductionPublish(snapshot)).rejects.toEqual(
+      expect.objectContaining<Partial<MotionEditorHostRequestError>>({
+        code: "publish_disabled",
+        stage: "publish_prepare",
+        message: "disabled",
+      }),
+    );
+  });
+
+  it("maps P5 compatibility, backup, and diagnostic commands", async () => {
+    const invoke = vi.fn(async (command: string) => {
+      if (command === "list_project_backups") return [];
+      if (command === "get_project_compatibility") {
+        return { editorVersion: "0.1.0", projectSchema: 1, rigSchema: 1, motionsSchema: 1, status: "compatible" };
+      }
+      if (command === "export_diagnostics") return {};
+      return { root: "C:/project", signature: "sha256:restored" };
+    });
+    const host = new TauriMotionEditorHost(invoke as TauriInvoke);
+
+    await host.getProjectCompatibility("C:/project");
+    await host.listProjectBackups("C:/project");
+    await host.restoreProjectBackup("C:/project", "123-backup");
+    await host.exportDiagnostics();
+
+    expect(invoke.mock.calls).toEqual([
+      ["get_project_compatibility", { root: "C:/project" }],
+      ["list_project_backups", { root: "C:/project" }],
+      ["restore_project_backup", { root: "C:/project", backupId: "123-backup" }],
+      ["export_diagnostics", undefined],
+    ]);
+  });
+
+  it("exports canonical assets through one native directory command", async () => {
+    const invoke = vi.fn(async () => ({
+      directory: "C:/export",
+      rigPath: "C:/export/xiaoluobao.rig.v1.json",
+      motionsPath: "C:/export/xiaoluobao.motions.v1.json",
+    }));
+    const host = new TauriMotionEditorHost(invoke as TauriInvoke);
+
+    const result = await host.exportCanonicalAssets(snapshot);
+
+    expect(invoke).toHaveBeenCalledWith("export_canonical_assets", { snapshot });
+    expect(result?.directory).toBe("C:/export");
+  });
 });
