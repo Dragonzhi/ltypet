@@ -264,8 +264,6 @@ const TianyiArtwork = ({
         leftArmFollow.wrapper,
       ]);
     }
-    motion.style.removeProperty("animation");
-
     if (head && headPivot && head.parentNode) {
       setPivotOrigin(headPivot, head.parentNode, [head]);
       for (const followRig of tailHeadFollows) {
@@ -277,15 +275,19 @@ const TianyiArtwork = ({
     for (const rig of pivotRigs) {
       setPivotOrigin(rig.pivot, rig.parent, [rig.wrapper, rig.layer]);
     }
-    measurementRestores.reverse().forEach((restore) => restore());
-
     let runtimeRig: SvgRuntimeRig | null = null;
     try {
+      // Runtime bind matrices must be measured while every procedural and
+      // interaction layer is neutral, otherwise the current idle phase is
+      // baked into the authored wrapper and shifts the resting pose.
       runtimeRig = new SvgRuntimeRig(svg, productionRig);
       onMotionTargetReady?.(runtimeRig);
     } catch (error) {
       console.error("初始化 SVG 动作 rig 失败:", error);
       onMotionTargetReady?.(null);
+    } finally {
+      motion.style.removeProperty("animation");
+      measurementRestores.reverse().forEach((restore) => restore());
     }
 
     return () => {

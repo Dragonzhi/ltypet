@@ -71,6 +71,7 @@ describe("生产动作资产加载", () => {
       "breathing",
       "pointer-follow",
     ]);
+    expect(bundle.clips.get("wave")?.suppressProceduralChannels ?? []).toEqual([]);
     for (const partId of ["arm_left", "arm_right"]) {
       const stretch = bundle.clips.get("stretch");
       if (!stretch) throw new Error("stretch fixture must exist");

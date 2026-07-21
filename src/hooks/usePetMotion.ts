@@ -41,6 +41,10 @@ export const usePointerFollow = (
       px(config.arm.leftRestOffsetY),
     );
     petElementRef.current.current?.style.setProperty(
+      "--arm-right-rest-y",
+      px(config.arm.rightRestOffsetY),
+    );
+    petElementRef.current.current?.style.setProperty(
       "--look-transition-ms",
       `${config.transitionMs}ms`,
     );

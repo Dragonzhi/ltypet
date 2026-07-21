@@ -29,12 +29,13 @@ export const PET_ANIMATION_CONFIG = {
     },
     // 身体只做克制的倾斜，双腿始终固定不参与跟随。
     body: { maxOffsetX: 0.55, maxOffsetY: 0.3, maxRotateDeg: 0.75 },
-    // 双臂使用动作外层跟随；leftRestOffsetY 用于校准素材的静态高度差。
+    // 双臂使用动作外层跟随；正值向下、负值向上，用于校准肩部连接位置。
     arm: {
       maxOffsetX: 0.7,
       maxOffsetY: 0.38,
       maxRotateDeg: 0.45,
-      leftRestOffsetY: -0.35,
+      leftRestOffsetY: 0,
+      rightRestOffsetY: 0,
     },
     // 马尾只绕 SVG 中各自的 pivot 转动，不再使用整体位移制造视差。
     hairTail: { maxRotateDeg: 1 },

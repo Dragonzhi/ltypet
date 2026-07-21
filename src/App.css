@@ -32,6 +32,7 @@ body,
   --arm-look-y: 0px;
   --arm-look-rotate: 0deg;
   --arm-left-rest-y: 0px;
+  --arm-right-rest-y: 0px;
   --tail-look-rotate: 0deg;
   --tail-left-inertia-rotate: 0deg;
   --tail-right-inertia-rotate: 0deg;
@@ -215,7 +216,8 @@ body,
 }
 
 .tianyi-artwork #arm-right-follow {
-  translate: var(--arm-look-x) var(--arm-look-y);
+  translate: var(--arm-look-x)
+    calc(var(--arm-look-y) + var(--arm-right-rest-y));
 }
 
 .pet-shell:not(.is-sleeping) #arm-left {
@@ -378,5 +380,5 @@ body,
     #white-hair-accessory-left,
     #white-hair-accessory-right
   ) {
-  animation: none;
+  animation-play-state: paused;
 }

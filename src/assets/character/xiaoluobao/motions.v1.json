@@ -131,8 +131,7 @@
           ]
         }
       ],
-      "events": [],
-      "suppressProceduralChannels": ["breathing"]
+      "events": []
     }
   ]
 }
