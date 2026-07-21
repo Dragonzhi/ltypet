@@ -36,6 +36,7 @@
 - Windows 托盘提供“显示小洛宝”和“退出小洛宝”的最小安全入口；左键托盘图标可恢复主窗口。
 - `ContextMenu`、`Shift+F10` 和 `Ctrl+Shift+Q` 键盘路径。
 - 独立的 Flash 风格 SVG Animation Studio MVP：Part/pivot、Clip、时间轴、关键帧、缓动、层级槽位、预览、撤销和 canonical rig/motions 导入导出；`wave` 已接入生产桌宠运行时。
+- Animation Studio 已支持当前小洛宝正式项目的打开、`wave` 润色、`bow`/`stretch` 制作、项目保存/恢复和固定生产目标的安全发布流程；真实窗口验收仍待完成。
 - Vitest 前端数学测试和 Rust 菜单/鼠标消息映射测试。
 
 ### 当前边界
@@ -46,6 +47,7 @@
 - 尚无番茄钟、前台窗口感知、系统音频检测、聊天、LLM、TTS、音乐或羁绊系统。
 - 基础桌宠当前不依赖网络；也没有向外发送系统感知或用户内容。
 - `README.md` 仍是模板内容，尚未整理为面向使用者的安装与使用说明。
+- Animation Studio 的独立 Tauri 文件宿主和发布能力目前面向仓库开发环境，正式分发属于 P5。
 
 ## 3. 近期路线图
 
