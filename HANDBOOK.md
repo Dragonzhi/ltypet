@@ -37,7 +37,7 @@
 - `ContextMenu`、`Shift+F10` 和 `Ctrl+Shift+Q` 键盘路径。
 - 独立的 Flash 风格 SVG Animation Studio MVP：Part/pivot、Clip、时间轴、关键帧、缓动、层级槽位、预览、撤销和 canonical rig/motions 导入导出；`wave` 已接入生产桌宠运行时。
 - Animation Studio 已支持当前小洛宝正式项目的打开、`wave` 润色、`bow`/`stretch` 制作、项目保存/恢复和固定生产目标的安全发布流程，并已完成真实窗口验收。
-- Animation Studio 已具备 schema v1 兼容门、保存前版本备份、异常恢复、脱敏诊断、Windows 单实例、便携程序和 NSIS 安装包；开发态、正式构建和 Windows 发布矩阵均已通过，仅剩内置历史备份恢复入口的人工复核。
+- Animation Studio 已具备 schema v1 兼容门、保存前版本备份、异常恢复、脱敏诊断、Windows 单实例、便携程序和 NSIS 安装包；开发态、正式构建和 Windows 发布矩阵均已通过，M8 已完成。
 - Vitest 前端数学测试和 Rust 菜单/鼠标消息映射测试。
 
 ### 当前边界
@@ -48,7 +48,7 @@
 - 尚无番茄钟、前台窗口感知、系统音频检测、聊天、LLM、TTS、音乐或羁绊系统。
 - 基础桌宠当前不依赖网络；也没有向外发送系统感知或用户内容。
 - `README.md` 仍是模板内容，尚未整理为面向使用者的安装与使用说明。
-- Animation Studio 的独立便携程序和 NSIS 安装包已经通过构建与运行验收；P5 封板前剩余一次内置历史备份恢复复核，公开发行还需完成角色素材/图标权利审核和安装包签名决策。
+- Animation Studio 的独立便携程序和 NSIS 安装包已经通过构建与运行验收；公开发行还需完成角色素材/图标权利审核和安装包签名决策。
 
 ## 3. 近期路线图
 
