@@ -5,7 +5,7 @@ import { createDefaultSettings } from "./defaults";
 /**
  * 将旧版本设置迁移到当前版本。
  *
- * 当前只有 version 1，此函数为未来版本升级预留。
+ * 旧版本通过与当前默认值合并升级到最新 schema。
  * 如果输入版本大于当前版本（降级场景），返回默认设置。
  */
 export function migrate(raw: unknown): PetSettings {
@@ -74,6 +74,19 @@ function mergeWithDefaults(obj: Record<string, unknown>): PetSettings {
     },
     agent: {
       enabled: typeof agent.enabled === "boolean" ? agent.enabled : defaults.agent.enabled,
+      provider: agent.provider === "openai-compatible" || agent.provider === "mock"
+        ? agent.provider
+        : defaults.agent.provider,
+      endpoint: typeof agent.endpoint === "string" ? agent.endpoint : defaults.agent.endpoint,
+      model: typeof agent.model === "string" ? agent.model : defaults.agent.model,
+      maxContextChars: typeof agent.maxContextChars === "number"
+        ? agent.maxContextChars
+        : defaults.agent.maxContextChars,
+      timeoutMs: typeof agent.timeoutMs === "number" ? agent.timeoutMs : defaults.agent.timeoutMs,
+      maxRetries: typeof agent.maxRetries === "number" ? agent.maxRetries : defaults.agent.maxRetries,
+      externalDataConsent: typeof agent.externalDataConsent === "boolean"
+        ? agent.externalDataConsent
+        : defaults.agent.externalDataConsent,
     },
     pomodoro: {
       focusMinutes: typeof pomodoro.focusMinutes === "number" ? pomodoro.focusMinutes : defaults.pomodoro.focusMinutes,

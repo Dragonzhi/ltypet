@@ -42,6 +42,8 @@ describe("settings domain", () => {
     it("默认关闭 Agent", () => {
       const settings = createDefaultSettings();
       expect(settings.agent.enabled).toBe(false);
+      expect(settings.agent.provider).toBe("mock");
+      expect(settings.agent.externalDataConsent).toBe(false);
     });
 
     it("番茄钟默认使用 25 分钟专注和 5 分钟休息", () => {
@@ -236,9 +238,23 @@ describe("settings domain", () => {
         schemaVersion: 1,
         window: { x: 100, y: 200, alwaysOnTop: false },
       });
-      expect(settings.schemaVersion).toBe(2);
+      expect(settings.schemaVersion).toBe(3);
       expect(settings.window.alwaysOnTop).toBe(false);
       expect(settings.pomodoro.focusMinutes).toBe(25);
+      expect(settings.agent.provider).toBe("mock");
+      expect(settings.agent.maxContextChars).toBe(24_000);
+    });
+
+    it("拒绝超出范围的对话超时和重试设置", () => {
+      const invalidTimeout = createDefaultSettings();
+      invalidTimeout.agent.timeoutMs = 2_999;
+      const timeoutResult = parseSettings(invalidTimeout);
+      expect(timeoutResult.ok).toBe(false);
+
+      const invalidRetries = createDefaultSettings();
+      invalidRetries.agent.maxRetries = 3;
+      const retryResult = parseSettings(invalidRetries);
+      expect(retryResult.ok).toBe(false);
     });
   });
 
@@ -251,19 +267,11 @@ describe("settings domain", () => {
     });
 
     it("序列化包含所有字段", () => {
-      const settings: PetSettings = {
-        schemaVersion: 2,
-        window: { x: 100, y: 200, alwaysOnTop: false, clickThrough: true },
-        animation: { intensity: 0.7 },
-        audio: { enabled: false, volume: 0.5 },
-        agent: { enabled: true },
-        pomodoro: {
-          focusMinutes: 25,
-          breakMinutes: 5,
-          showSystemReminder: true,
-          soundEnabled: true,
-        },
-      };
+      const settings: PetSettings = createDefaultSettings();
+      settings.window = { x: 100, y: 200, alwaysOnTop: false, clickThrough: true };
+      settings.animation.intensity = 0.7;
+      settings.audio = { enabled: false, volume: 0.5 };
+      settings.agent.enabled = true;
       const json = serializeSettings(settings);
       const parsed = JSON.parse(json);
       expect(parsed.window.x).toBe(100);

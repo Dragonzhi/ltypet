@@ -14,6 +14,7 @@ import type { TimerKind, TimerSnapshot } from "../domain/controllers/types";
 import { TauriTimerController } from "../controllers/TauriTimerController";
 import { parseSettings } from "../domain/settings/validate";
 import { createDefaultSettings } from "../domain/settings/defaults";
+import { deleteApiKey, hasApiKey, setApiKey } from "../controllers/SecureKeyStore";
 
 export default function SettingsWindow() {
   const [settings, setSettings] = useState<PetSettings | null>(null);
@@ -22,6 +23,9 @@ export default function SettingsWindow() {
   const [timerError, setTimerError] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const [timerController] = useState(() => new TauriTimerController());
+  const [apiKeyDraft, setApiKeyDraft] = useState("");
+  const [apiKeyPresent, setApiKeyPresent] = useState(false);
+  const [apiKeyStatus, setApiKeyStatus] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -82,6 +86,24 @@ export default function SettingsWindow() {
       window.clearInterval(interval);
     };
   }, [timerController]);
+
+  useEffect(() => {
+    if (settings?.agent.provider !== "openai-compatible") {
+      setApiKeyPresent(false);
+      return;
+    }
+    let active = true;
+    void hasApiKey("openai-compatible")
+      .then((present) => {
+        if (active) setApiKeyPresent(present);
+      })
+      .catch((error: unknown) => {
+        if (active) setApiKeyStatus(`检查 API key 失败：${String(error)}`);
+      });
+    return () => {
+      active = false;
+    };
+  }, [settings?.agent.provider]);
 
   if (!settings) {
     return (
@@ -149,6 +171,33 @@ export default function SettingsWindow() {
   const remainingMs = timer?.status === "running" && timer.deadlineUnixMs !== null
     ? Math.max(0, timer.deadlineUnixMs - now)
     : timer?.remainingMs ?? 0;
+
+  const saveApiKey = async () => {
+    const key = apiKeyDraft.trim();
+    if (!key) {
+      setApiKeyStatus("请输入 API key");
+      return;
+    }
+    try {
+      await setApiKey("openai-compatible", key);
+      setApiKeyDraft("");
+      setApiKeyPresent(true);
+      setApiKeyStatus("API key 已写入 Windows DPAPI 加密存储");
+    } catch (error) {
+      setApiKeyStatus(`保存 API key 失败：${String(error)}`);
+    }
+  };
+
+  const removeApiKey = async () => {
+    try {
+      await deleteApiKey("openai-compatible");
+      setApiKeyDraft("");
+      setApiKeyPresent(false);
+      setApiKeyStatus("API key 已删除");
+    } catch (error) {
+      setApiKeyStatus(`删除 API key 失败：${String(error)}`);
+    }
+  };
 
   return (
     <div style={containerStyle}>
@@ -280,7 +329,112 @@ export default function SettingsWindow() {
           <p style={hintStyle}>关闭设置窗口或重启桌宠不会丢失正在进行或暂停的计时。</p>
         </Section>
 
-        <Section title="Agent">
+        <Section title="对话与 Agent">
+          <Row label="对话 Provider">
+            <select
+              value={settings.agent.provider}
+              onChange={(event) => updateAgent({
+                provider: event.target.value === "openai-compatible"
+                  ? "openai-compatible"
+                  : "mock",
+              })}
+              style={textInputStyle}
+            >
+              <option value="mock">离线 Mock</option>
+              <option value="openai-compatible">OpenAI-compatible</option>
+            </select>
+          </Row>
+          {settings.agent.provider === "openai-compatible" && (
+            <>
+              <Row label="接口地址">
+                <input
+                  type="url"
+                  value={settings.agent.endpoint}
+                  onChange={(event) => updateAgent({ endpoint: event.target.value })}
+                  style={wideInputStyle}
+                  spellCheck={false}
+                />
+              </Row>
+              <Row label="模型名称">
+                <input
+                  type="text"
+                  value={settings.agent.model}
+                  onChange={(event) => updateAgent({ model: event.target.value })}
+                  placeholder="由供应商提供"
+                  maxLength={128}
+                  style={textInputStyle}
+                  spellCheck={false}
+                />
+              </Row>
+              <Row label={`API key（${apiKeyPresent ? "已保存" : "未保存"}）`}>
+                <input
+                  type="password"
+                  value={apiKeyDraft}
+                  onChange={(event) => setApiKeyDraft(event.target.value)}
+                  placeholder={apiKeyPresent ? "输入新 key 可覆盖" : "不会写入设置文件"}
+                  autoComplete="off"
+                  style={textInputStyle}
+                />
+              </Row>
+              <div style={timerActionsStyle}>
+                <button type="button" style={btnStyle} onClick={() => void saveApiKey()}>保存 API key</button>
+                <button type="button" style={dangerBtnStyle} disabled={!apiKeyPresent} onClick={() => void removeApiKey()}>删除 API key</button>
+              </div>
+              <Row label="上下文预算（字符）">
+                <input
+                  type="number"
+                  min="1000"
+                  max="100000"
+                  step="1000"
+                  value={settings.agent.maxContextChars}
+                  onChange={(event) => updateAgent({
+                    maxContextChars: Math.min(100_000, Math.max(1_000, Math.round(Number(event.target.value) || 1_000))),
+                  })}
+                  style={numberInputStyle}
+                />
+              </Row>
+              <Row label="请求超时（秒）">
+                <input
+                  type="number"
+                  min="3"
+                  max="120"
+                  value={Math.round(settings.agent.timeoutMs / 1_000)}
+                  onChange={(event) => updateAgent({
+                    timeoutMs: Math.min(120, Math.max(3, Math.round(Number(event.target.value) || 3))) * 1_000,
+                  })}
+                  style={numberInputStyle}
+                />
+              </Row>
+              <Row label="首包前重试次数">
+                <input
+                  type="number"
+                  min="0"
+                  max="2"
+                  value={settings.agent.maxRetries}
+                  onChange={(event) => updateAgent({
+                    maxRetries: Math.min(2, Math.max(0, Math.round(Number(event.target.value) || 0))),
+                  })}
+                  style={numberInputStyle}
+                />
+              </Row>
+              <Row label="允许外发对话文本">
+                <input
+                  type="checkbox"
+                  checked={settings.agent.externalDataConsent}
+                  onChange={(event) => updateAgent({ externalDataConsent: event.target.checked })}
+                />
+              </Row>
+              <p style={hintStyle}>
+                仅发送输入及预算范围内的最近对话，不发送屏幕、窗口、应用状态或其他系统感知数据。
+              </p>
+              {apiKeyStatus && <div style={timerStatusStyle}>{apiKeyStatus}</div>}
+            </>
+          )}
+          <div style={timerActionsStyle}>
+            <button type="button" style={btnStyle} onClick={() => void invoke("open_chat")}>打开对话窗口</button>
+          </div>
+          <p style={hintStyle}>离线 Mock 不联网；对话记录只保留在当前窗口内存中。</p>
+          <div style={{ height: 8 }} />
           <Row label="启用 Agent">
             <input
               type="checkbox"
@@ -289,7 +443,7 @@ export default function SettingsWindow() {
             />
           </Row>
           <p style={hintStyle}>
-            关闭后所有 Agent 触发的行为将被丢弃，但手动触发的行为仍可执行。
+            此开关预留给 M12。M11 的模型对话不会获得角色或桌面控制工具。
           </p>
         </Section>
 
@@ -396,6 +550,16 @@ const valueStyle: CSSProperties = {
 const numberInputStyle: CSSProperties = {
   width: 72,
   padding: "4px 6px",
+};
+
+const textInputStyle: CSSProperties = {
+  width: 210,
+  padding: "5px 7px",
+};
+
+const wideInputStyle: CSSProperties = {
+  ...textInputStyle,
+  width: 280,
 };
 
 const timerStatusStyle: CSSProperties = {

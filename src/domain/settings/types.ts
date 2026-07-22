@@ -8,7 +8,7 @@
  */
 
 /** 当前设置结构版本号 */
-export const CURRENT_SCHEMA_VERSION = 2 as const;
+export const CURRENT_SCHEMA_VERSION = 3 as const;
 
 /** 窗口位置与外观状态 */
 export interface WindowSettings {
@@ -40,6 +40,20 @@ export interface AudioSettings {
 export interface AgentSettings {
   /** Agent 总开关 */
   enabled: boolean;
+  /** M11 对话使用的模型供应商；Agent 工具能力仍由 enabled 单独控制。 */
+  provider: "mock" | "openai-compatible";
+  /** OpenAI-compatible Chat Completions 完整地址。 */
+  endpoint: string;
+  /** 供应商模型标识。 */
+  model: string;
+  /** 单次外发上下文的 Unicode 字符预算，范围 [1000, 100000]。 */
+  maxContextChars: number;
+  /** 原生网络请求超时，范围 [3000, 120000] 毫秒。 */
+  timeoutMs: number;
+  /** 首个增量前的自动重试次数，范围 [0, 2]。 */
+  maxRetries: number;
+  /** 用户是否明确同意把对话文本发送给外部 Provider。 */
+  externalDataConsent: boolean;
 }
 
 /** 番茄钟时长与完成提醒偏好。 */

@@ -1,6 +1,10 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod chat;
+mod secrets;
 mod timer;
 
+use chat::{chat_cancel, chat_start, ChatManager};
+use secrets::{migrate_legacy, secret_delete, secret_has, secret_set};
 use serde::Deserialize;
 use std::fs;
 use std::sync::OnceLock;
@@ -24,8 +28,7 @@ const MENU_CENTER_WINDOW: &str = "center-window";
 const MENU_SHOW_WINDOW: &str = "show-window";
 const MENU_EXIT: &str = "exit";
 const MENU_OPEN_SETTINGS: &str = "open-settings";
-const MENU_TOGGLE_AGENT: &str = "toggle-agent";
-const MENU_STOP_ALL: &str = "stop-all";
+const MENU_OPEN_CHAT: &str = "open-chat";
 const TRAY_ID: &str = "main-tray";
 
 #[derive(Debug, PartialEq, Eq)]
@@ -124,6 +127,10 @@ async fn show_context_menu(
         .id(MENU_CENTER_WINDOW)
         .build(&app)
         .map_err(|e| e.to_string())?;
+    let chat_item = MenuItemBuilder::new("与小洛宝对话")
+        .id(MENU_OPEN_CHAT)
+        .build(&app)
+        .map_err(|e| e.to_string())?;
     let exit_item = MenuItemBuilder::new("退出小洛宝")
         .id(MENU_EXIT)
         .accelerator("Ctrl+Shift+Q")
@@ -133,6 +140,8 @@ async fn show_context_menu(
     let menu = MenuBuilder::new(&app)
         .item(&always_on_top_item)
         .item(&center_item)
+        .separator()
+        .item(&chat_item)
         .separator()
         .item(&exit_item)
         .build()
@@ -296,36 +305,6 @@ fn timer_take_pending_finished(
 }
 
 #[tauri::command]
-async fn load_secrets(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let path = dir.join("secrets.json");
-    if !path.exists() {
-        return Ok(None);
-    }
-    match fs::read_to_string(&path) {
-        Ok(content) => Ok(Some(content)),
-        Err(e) => {
-            eprintln!("读取密钥文件失败: {e}");
-            Ok(None)
-        }
-    }
-}
-
-#[tauri::command]
-async fn save_secrets(app: tauri::AppHandle, json: String) -> Result<(), String> {
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let path = dir.join("secrets.json");
-    let tmp_path = dir.join("secrets.json.tmp");
-    fs::write(&tmp_path, &json).map_err(|e| e.to_string())?;
-    fs::rename(&tmp_path, &path).map_err(|e| {
-        let _ = fs::remove_file(&tmp_path);
-        e.to_string()
-    })?;
-    Ok(())
-}
-
-#[tauri::command]
 fn stop_all_behaviors() -> Result<(), String> {
     // 前端调度器在收到此命令的事件后会处理
     Ok(())
@@ -340,6 +319,23 @@ async fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
         tauri::WebviewWindowBuilder::new(&app, "settings", WebviewUrl::App("settings.html".into()))
             .title("小洛宝设置")
             .inner_size(480.0, 520.0)
+            .resizable(true)
+            .build()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn open_chat(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("chat") {
+        window.show().map_err(|e| e.to_string())?;
+        window.set_focus().map_err(|e| e.to_string())?;
+    } else {
+        tauri::WebviewWindowBuilder::new(&app, "chat", WebviewUrl::App("chat.html".into()))
+            .title("与小洛宝对话")
+            .inner_size(520.0, 680.0)
+            .min_inner_size(380.0, 480.0)
             .resizable(true)
             .build()
             .map_err(|e| e.to_string())?;
@@ -367,6 +363,24 @@ fn handle_window_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
                 )
                 .title("小洛宝设置")
                 .inner_size(480.0, 520.0)
+                .resizable(true)
+                .build();
+            }
+            return;
+        }
+        MENU_OPEN_CHAT => {
+            if let Some(window) = app.get_webview_window("chat") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            } else {
+                let _ = tauri::WebviewWindowBuilder::new(
+                    app,
+                    "chat",
+                    WebviewUrl::App("chat.html".into()),
+                )
+                .title("与小洛宝对话")
+                .inner_size(520.0, 680.0)
+                .min_inner_size(380.0, 480.0)
                 .resizable(true)
                 .build();
             }
@@ -416,12 +430,16 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
     let settings_item = MenuItemBuilder::new("设置")
         .id(MENU_OPEN_SETTINGS)
         .build(app)?;
+    let chat_item = MenuItemBuilder::new("与小洛宝对话")
+        .id(MENU_OPEN_CHAT)
+        .build(app)?;
     let exit_item = MenuItemBuilder::new("退出小洛宝")
         .id(MENU_EXIT)
         .build(app)?;
     let menu = MenuBuilder::new(app)
         .item(&show_item)
         .separator()
+        .item(&chat_item)
         .item(&settings_item)
         .separator()
         .item(&exit_item)
@@ -474,9 +492,13 @@ pub fn run() {
             get_work_area,
             load_settings,
             save_settings,
-            load_secrets,
-            save_secrets,
+            secret_has,
+            secret_set,
+            secret_delete,
+            chat_start,
+            chat_cancel,
             open_settings,
+            open_chat,
             stop_all_behaviors,
             timer_get_state,
             timer_start,
@@ -487,7 +509,11 @@ pub fn run() {
         ])
         .setup(|app| {
             create_tray(app)?;
+            app.manage(ChatManager::default());
             let app_handle = app.handle().clone();
+            if let Err(error) = migrate_legacy(&app_handle) {
+                eprintln!("迁移旧密钥存储失败：{error}");
+            }
             let timer_path = app.path().app_data_dir()?.join("timer-state.json");
             let timer_manager = TimerManager::load(timer_path);
             app.manage(timer_manager.clone());

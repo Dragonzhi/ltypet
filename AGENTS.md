@@ -42,10 +42,14 @@
 | `src/hooks/useWindowDrag.ts` | 非阻塞原生窗口拖动 |
 | `src/hooks/useClickThrough.ts` | SVG 轮廓命中与动态点击穿透 |
 | `src/controllers/TauriTimerController.ts` | 前端统一番茄钟接口与原生事件适配 |
+| `src/components/ChatWindow.tsx` | 独立对话窗口、流式展示、键盘发送与取消交互 |
+| `src/domain/chat/`、`src/providers/` | Provider 契约、上下文预算、离线 Mock 与原生模型适配 |
 | `src/motion/` | 可独立测试的动画与交互数学 |
 | `src/App.css` | SVG/CSS 动画与图层样式 |
 | `src-tauri/src/lib.rs` | Tauri Builder、全局鼠标钩子、原生命令与菜单 |
 | `src-tauri/src/timer.rs` | 可靠计时状态机、持久化、恢复与完成提醒 |
+| `src-tauri/src/chat.rs` | OpenAI-compatible HTTPS/SSE、有限重试、错误映射与取消 |
+| `src-tauri/src/secrets.rs` | Windows DPAPI 密钥存储和旧明文文件迁移 |
 | `src-tauri/tauri.conf.json` | 窗口和 bundle 配置 |
 | `src-tauri/capabilities/default.json` | 主窗口最小权限集合 |
 

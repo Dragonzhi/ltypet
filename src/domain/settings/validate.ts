@@ -78,6 +78,28 @@ function validateRanges(settings: PetSettings): string | null {
     return "audio.volume 必须在 [0, 1] 范围内";
   }
 
+  if (settings.agent.endpoint.length > 2048) {
+    return "agent.endpoint 不能超过 2048 个字符";
+  }
+  if (settings.agent.model.length > 128) {
+    return "agent.model 不能超过 128 个字符";
+  }
+  if (!Number.isInteger(settings.agent.maxContextChars)
+    || settings.agent.maxContextChars < 1_000
+    || settings.agent.maxContextChars > 100_000) {
+    return "agent.maxContextChars 必须是 [1000, 100000] 范围内的整数";
+  }
+  if (!Number.isInteger(settings.agent.timeoutMs)
+    || settings.agent.timeoutMs < 3_000
+    || settings.agent.timeoutMs > 120_000) {
+    return "agent.timeoutMs 必须是 [3000, 120000] 范围内的整数";
+  }
+  if (!Number.isInteger(settings.agent.maxRetries)
+    || settings.agent.maxRetries < 0
+    || settings.agent.maxRetries > 2) {
+    return "agent.maxRetries 必须是 [0, 2] 范围内的整数";
+  }
+
   if (!Number.isInteger(settings.pomodoro.focusMinutes) || settings.pomodoro.focusMinutes < 1 || settings.pomodoro.focusMinutes > 180) {
     return "pomodoro.focusMinutes 必须是 [1, 180] 范围内的整数";
   }

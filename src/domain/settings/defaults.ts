@@ -25,6 +25,13 @@ export function createDefaultSettings(): PetSettings {
     },
     agent: {
       enabled: false,
+      provider: "mock",
+      endpoint: "https://api.openai.com/v1/chat/completions",
+      model: "",
+      maxContextChars: 24_000,
+      timeoutMs: 45_000,
+      maxRetries: 1,
+      externalDataConsent: false,
     },
     pomodoro: {
       focusMinutes: 25,

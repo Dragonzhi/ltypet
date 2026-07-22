@@ -1,0 +1,464 @@
+use crate::secrets::get_secret;
+use futures_util::future::{AbortHandle, Abortable};
+use futures_util::StreamExt;
+use reqwest::{Client, StatusCode, Url};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use tauri::{Emitter, State};
+
+const PROVIDER_ID: &str = "openai-compatible";
+const MAX_MESSAGES: usize = 100;
+const MAX_CONTENT_CHARS: usize = 100_000;
+
+#[derive(Clone, Default)]
+pub struct ChatManager {
+    active: Arc<Mutex<HashMap<String, AbortHandle>>>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatMessage {
+    role: ChatRole,
+    content: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "lowercase")]
+enum ChatRole {
+    User,
+    Assistant,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatStartRequest {
+    request_id: String,
+    endpoint: String,
+    model: String,
+    messages: Vec<ChatMessage>,
+    timeout_ms: u64,
+    max_retries: u8,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatError {
+    code: &'static str,
+    message: String,
+    retryable: bool,
+}
+
+impl ChatError {
+    fn new(code: &'static str, message: impl Into<String>, retryable: bool) -> Self {
+        Self {
+            code,
+            message: message.into(),
+            retryable,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct ChatStreamEvent {
+    request_id: String,
+    event_type: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    delta: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<ChatError>,
+}
+
+impl ChatStreamEvent {
+    fn delta(request_id: &str, delta: String) -> Self {
+        Self {
+            request_id: request_id.to_string(),
+            event_type: "delta",
+            delta: Some(delta),
+            error: None,
+        }
+    }
+
+    fn done(request_id: &str) -> Self {
+        Self {
+            request_id: request_id.to_string(),
+            event_type: "done",
+            delta: None,
+            error: None,
+        }
+    }
+
+    fn error(request_id: &str, error: ChatError) -> Self {
+        Self {
+            request_id: request_id.to_string(),
+            event_type: "error",
+            delta: None,
+            error: Some(error),
+        }
+    }
+}
+
+fn validate_endpoint(endpoint: &str) -> Result<Url, ChatError> {
+    let url = Url::parse(endpoint)
+        .map_err(|_| ChatError::new("invalid_configuration", "模型接口地址不是合法 URL", false))?;
+    let local_http =
+        url.scheme() == "http" && matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "::1"));
+    if url.scheme() != "https" && !local_http {
+        return Err(ChatError::new(
+            "invalid_configuration",
+            "模型接口必须使用 HTTPS；仅本机地址允许 HTTP",
+            false,
+        ));
+    }
+    Ok(url)
+}
+
+fn validate_request(request: &ChatStartRequest) -> Result<Url, ChatError> {
+    if request.request_id.is_empty() || request.request_id.len() > 128 {
+        return Err(ChatError::new("invalid_request", "请求 ID 不合法", false));
+    }
+    if request.model.trim().is_empty() || request.model.len() > 128 {
+        return Err(ChatError::new(
+            "invalid_configuration",
+            "模型名称不能为空且不能超过 128 个字符",
+            false,
+        ));
+    }
+    if request.messages.is_empty() || request.messages.len() > MAX_MESSAGES {
+        return Err(ChatError::new(
+            "invalid_request",
+            "上下文消息数量超出限制",
+            false,
+        ));
+    }
+    let total_chars = request
+        .messages
+        .iter()
+        .map(|message| message.content.chars().count())
+        .sum::<usize>();
+    if total_chars == 0 || total_chars > MAX_CONTENT_CHARS {
+        return Err(ChatError::new(
+            "invalid_request",
+            "上下文内容为空或超出原生层上限",
+            false,
+        ));
+    }
+    if !(3_000..=120_000).contains(&request.timeout_ms) || request.max_retries > 2 {
+        return Err(ChatError::new(
+            "invalid_configuration",
+            "超时或重试设置超出安全范围",
+            false,
+        ));
+    }
+    validate_endpoint(&request.endpoint)
+}
+
+#[derive(Default)]
+struct SseDecoder {
+    buffer: Vec<u8>,
+}
+
+enum DecodedEvent {
+    Delta(String),
+    Done,
+}
+
+impl SseDecoder {
+    fn push(&mut self, bytes: &[u8]) -> Result<Vec<DecodedEvent>, ChatError> {
+        self.buffer.extend_from_slice(bytes);
+        let mut events = Vec::new();
+        while let Some(index) = self.buffer.iter().position(|byte| *byte == b'\n') {
+            let mut line = self.buffer.drain(..=index).collect::<Vec<_>>();
+            line.pop();
+            if line.last() == Some(&b'\r') {
+                line.pop();
+            }
+            if line.is_empty() || line.first() == Some(&b':') {
+                continue;
+            }
+            let text = std::str::from_utf8(&line)
+                .map_err(|_| ChatError::new("invalid_response", "模型流包含无效 UTF-8", false))?;
+            let Some(data) = text.strip_prefix("data:") else {
+                continue;
+            };
+            let data = data.trim_start();
+            if data == "[DONE]" {
+                events.push(DecodedEvent::Done);
+                continue;
+            }
+            let value: serde_json::Value = serde_json::from_str(data).map_err(|_| {
+                ChatError::new("invalid_response", "模型返回了无效的流式 JSON", false)
+            })?;
+            if let Some(delta) = value
+                .pointer("/choices/0/delta/content")
+                .and_then(serde_json::Value::as_str)
+            {
+                if !delta.is_empty() {
+                    events.push(DecodedEvent::Delta(delta.to_string()));
+                }
+            }
+        }
+        Ok(events)
+    }
+}
+
+struct AttemptFailure {
+    error: ChatError,
+    emitted_delta: bool,
+}
+
+async fn stream_once(
+    app: &tauri::AppHandle,
+    window_label: &str,
+    request: &ChatStartRequest,
+    endpoint: Url,
+    api_key: &str,
+) -> Result<(), AttemptFailure> {
+    let client = Client::builder()
+        .timeout(Duration::from_millis(request.timeout_ms))
+        .build()
+        .map_err(|error| AttemptFailure {
+            error: ChatError::new(
+                "network_error",
+                format!("创建网络客户端失败：{error}"),
+                true,
+            ),
+            emitted_delta: false,
+        })?;
+    let response = client
+        .post(endpoint)
+        .bearer_auth(api_key)
+        .json(&json!({
+            "model": request.model,
+            "messages": request.messages,
+            "stream": true
+        }))
+        .send()
+        .await
+        .map_err(|error| AttemptFailure {
+            error: if error.is_timeout() {
+                ChatError::new("timeout", "模型请求超时", true)
+            } else {
+                ChatError::new("network_error", format!("模型网络请求失败：{error}"), true)
+            },
+            emitted_delta: false,
+        })?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error = match status {
+            StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                ChatError::new("invalid_api_key", "API key 无效或没有访问权限", false)
+            }
+            StatusCode::TOO_MANY_REQUESTS => {
+                ChatError::new("rate_limited", "模型服务正在限流，请稍后重试", true)
+            }
+            status if status.is_server_error() => ChatError::new(
+                "provider_unavailable",
+                format!("模型服务暂时不可用（HTTP {status}）"),
+                true,
+            ),
+            _ => ChatError::new(
+                "provider_error",
+                format!("模型服务拒绝了请求（HTTP {status}）"),
+                false,
+            ),
+        };
+        return Err(AttemptFailure {
+            error,
+            emitted_delta: false,
+        });
+    }
+
+    let mut stream = response.bytes_stream();
+    let mut decoder = SseDecoder::default();
+    let mut emitted_delta = false;
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|error| AttemptFailure {
+            error: if error.is_timeout() {
+                ChatError::new("timeout", "接收模型响应超时", true)
+            } else {
+                ChatError::new("network_error", format!("模型响应中断：{error}"), true)
+            },
+            emitted_delta,
+        })?;
+        for event in decoder.push(&chunk).map_err(|error| AttemptFailure {
+            error,
+            emitted_delta,
+        })? {
+            match event {
+                DecodedEvent::Delta(delta) => {
+                    emitted_delta = true;
+                    let _ = app.emit_to(
+                        window_label,
+                        "chat-stream",
+                        ChatStreamEvent::delta(&request.request_id, delta),
+                    );
+                }
+                DecodedEvent::Done => return Ok(()),
+            }
+        }
+    }
+
+    if emitted_delta {
+        Ok(())
+    } else {
+        Err(AttemptFailure {
+            error: ChatError::new("invalid_response", "模型没有返回文本内容", false),
+            emitted_delta: false,
+        })
+    }
+}
+
+async fn run_chat(
+    app: tauri::AppHandle,
+    window_label: String,
+    request: ChatStartRequest,
+    endpoint: Url,
+    api_key: String,
+) -> Result<(), ChatError> {
+    let mut attempt = 0u8;
+    loop {
+        match stream_once(&app, &window_label, &request, endpoint.clone(), &api_key).await {
+            Ok(()) => return Ok(()),
+            Err(failure)
+                if failure.error.retryable
+                    && !failure.emitted_delta
+                    && attempt < request.max_retries =>
+            {
+                attempt += 1;
+                tokio::time::sleep(Duration::from_millis(350 * u64::from(attempt))).await;
+            }
+            Err(failure) => return Err(failure.error),
+        }
+    }
+}
+
+#[tauri::command]
+pub fn chat_start(
+    app: tauri::AppHandle,
+    window: tauri::WebviewWindow,
+    manager: State<'_, ChatManager>,
+    request: ChatStartRequest,
+) -> Result<(), ChatError> {
+    let endpoint = validate_request(&request)?;
+    let api_key = get_secret(&app, PROVIDER_ID)
+        .map_err(|error| ChatError::new("secret_store_error", error, false))?
+        .ok_or_else(|| ChatError::new("missing_api_key", "尚未保存 API key", false))?;
+    let mut active = manager
+        .active
+        .lock()
+        .map_err(|_| ChatError::new("internal_error", "对话请求状态不可用", false))?;
+    if active.contains_key(&request.request_id) {
+        return Err(ChatError::new(
+            "request_conflict",
+            "相同请求 ID 已在运行",
+            false,
+        ));
+    }
+    let (abort_handle, abort_registration) = AbortHandle::new_pair();
+    active.insert(request.request_id.clone(), abort_handle);
+    drop(active);
+
+    let request_id = request.request_id.clone();
+    let window_label = window.label().to_string();
+    let manager = manager.inner().clone();
+    let task_app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let result = Abortable::new(
+            run_chat(
+                task_app.clone(),
+                window_label.clone(),
+                request,
+                endpoint,
+                api_key,
+            ),
+            abort_registration,
+        )
+        .await;
+        if let Ok(mut active) = manager.active.lock() {
+            active.remove(&request_id);
+        }
+        match result {
+            Ok(Ok(())) => {
+                let _ = task_app.emit_to(
+                    &window_label,
+                    "chat-stream",
+                    ChatStreamEvent::done(&request_id),
+                );
+            }
+            Ok(Err(error)) => {
+                let _ = task_app.emit_to(
+                    &window_label,
+                    "chat-stream",
+                    ChatStreamEvent::error(&request_id, error),
+                );
+            }
+            Err(_) => {
+                let _ = task_app.emit_to(
+                    &window_label,
+                    "chat-stream",
+                    ChatStreamEvent::error(
+                        &request_id,
+                        ChatError::new("cancelled", "已停止生成", false),
+                    ),
+                );
+            }
+        }
+    });
+    Ok(())
+}
+
+#[tauri::command]
+pub fn chat_cancel(manager: State<'_, ChatManager>, request_id: String) -> Result<bool, String> {
+    let active = manager
+        .active
+        .lock()
+        .map_err(|_| "对话请求状态不可用".to_string())?;
+    if let Some(handle) = active.get(&request_id) {
+        handle.abort();
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{validate_endpoint, DecodedEvent, SseDecoder};
+
+    #[test]
+    fn endpoint_requires_https_except_localhost() {
+        assert!(validate_endpoint("https://api.example.com/v1/chat/completions").is_ok());
+        assert!(validate_endpoint("http://localhost:11434/v1/chat/completions").is_ok());
+        assert!(validate_endpoint("http://127.0.0.1:8080/chat").is_ok());
+        assert!(validate_endpoint("http://example.com/chat").is_err());
+        assert!(validate_endpoint("not a url").is_err());
+    }
+
+    #[test]
+    fn sse_decoder_handles_split_utf8_and_done() {
+        let line = "data: {\"choices\":[{\"delta\":{\"content\":\"你好\"}}]}\n\n";
+        let bytes = line.as_bytes();
+        let split = bytes
+            .windows(3)
+            .position(|window| window == "你".as_bytes())
+            .expect("Chinese bytes")
+            + 1;
+        let mut decoder = SseDecoder::default();
+        assert!(decoder.push(&bytes[..split]).expect("first").is_empty());
+        let events = decoder.push(&bytes[split..]).expect("second");
+        assert!(matches!(&events[0], DecodedEvent::Delta(text) if text == "你好"));
+        let done = decoder.push(b"data: [DONE]\n\n").expect("done");
+        assert!(matches!(done[0], DecodedEvent::Done));
+    }
+
+    #[test]
+    fn sse_decoder_rejects_invalid_json() {
+        let mut decoder = SseDecoder::default();
+        assert!(decoder.push(b"data: nope\n").is_err());
+    }
+}
