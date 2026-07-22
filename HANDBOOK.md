@@ -8,7 +8,7 @@
 
 ## 1. 项目愿景
 
-一只安静地待在桌面角落的洛天依。她能通过自然的小动作提供陪伴，未来可以一起专注、聊天、听 Lo-Fi，并在用户授权后对当前工作状态作出克制的反馈。她不是普通工具悬浮窗，而是有持续性格和关系感的桌面伙伴。
+一只安静地待在桌面角落的洛天依。她能通过自然的小动作提供陪伴，未来可以一起专注、聊天，并在你用其他应用播放音乐时轻轻跟随律动；在用户授权后，她也能对当前工作状态作出克制的反馈。她不是普通工具悬浮窗，而是有持续性格和关系感的桌面伙伴。
 
 产品体验原则：
 
@@ -50,7 +50,7 @@
 
 - `idle | blink | listen | speak | sleep | drag` 已有状态骨架，但 `listen`、`speak` 和 `sleep` 尚未形成完整可达流程。
 - 尚无窗口边缘吸附和角色模式切换。
-- 尚无前台窗口感知、系统音频检测、TTS、音乐或羁绊系统。
+- 尚无前台窗口感知、系统媒体反应、TTS、创作者插件或羁绊系统。
 - 对话仍只保存在当前窗口内存中，不形成长期记忆；模型不能访问 shell、文件、进程、任意网络、DOM/CSS、原始窗口坐标或任意 Tauri 命令。
 - 基础桌宠和离线 Mock 不依赖网络；只有用户切换外部 Provider、明确同意并主动发送时才外发对话文本。
 - `README.md` 仍是模板内容，尚未整理为面向使用者的安装与使用说明。
@@ -73,11 +73,12 @@
 
 - [x] 可靠番茄钟和专注陪伴反馈：原生持久化计时、统一 TimerController、完成时角色招手及可选系统提醒/提示音。
 - [ ] 经用户授权的前台窗口与系统音频活动感知。
-- [ ] Lo-Fi 背景音乐和环境音控制。
+- [ ] 对系统正在播放的音乐作出低打扰视觉反应：播放时律动、暂停时收束、停止后回到待机；不内置 Lo-Fi、背景音乐或环境音播放器。
 
 ### 联网与长期系统
 
 - [x] 可替换 Provider 的流式 LLM 对话壳与离线 Mock 降级，以及经过白名单、确认、本地策略和统一调度器约束的 Agent 工具闭环。
+- [ ] 面向创作者的版本化插件接口；Codex、Claude Code 等开发 Agent 的生命周期反馈作为独立插件接入，而不是写死在桌宠核心中。
 - [ ] 可选 TTS/语音能力。
 - [ ] 羁绊、好感度和长期记忆，并提供透明的数据管理入口。
 
@@ -89,6 +90,8 @@
 - 角色表现通过适配层与行为系统解耦；生产方向保持分层 SVG，SVG-edit/svgcanvas 只存在于独立 Animation Studio。编辑器导出 rig/motion 数据，生产运行时只消费共享 schema 与动画数学，不携带编辑器 UI。
 - 纸片关节轻微分离、四肢或马尾与身体短暂脱开可以作为风格特征，但连接点和层级切换不应产生明显跳变。
 - 番茄钟、持久化和系统感知等可靠性能力放在原生层；角色视觉与短时交互留在前端。
+- 核心应用不是音乐播放器。除提示音和用户明确启用的 TTS 外，音乐由系统中的其他应用播放；桌宠只在授权后读取最小必要的播放/活动状态并转化为视觉反应，不录制或转发音频内容。
+- 外部工具联动采用插件边界。Codex、Claude Code 或未来 IDE/Agent 插件只能提交版本化、可校验的观察事件，不能直接操作 SVG、窗口、Tauri command 或绕过 `BehaviorScheduler`；每个插件都必须可安装、可禁用、可审计权限并受频率限制。
 - 模型通信通过 Provider 接口隔离；纯文本对话不附带工具，只有用户开启 Agent 后才会按主窗口能力快照动态生成经过白名单和调度器双重校验的语义工具。新增 Agent 能力遵循 [`docs/Agent工具扩展指南.md`](./docs/Agent工具扩展指南.md)，不得只改提示词或只加前端 schema。
 - 所有联网、音频与系统感知能力必须可选，并保证基础桌宠离线可用。
 
@@ -97,7 +100,7 @@
 | 项目 | 参考方向 |
 |---|---|
 | [Kokoro Engine](https://github.com/chyinan/Kokoro-Engine) | Tauri、角色引擎、LLM 与 TTS 的整体分层 |
-| [Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk) | 轻量 SVG 桌宠和 Agent 交互气质 |
+| [Clawd on Desk](https://github.com/rullerzhou-afk/clawd-on-desk) | 轻量 SVG 桌宠、开发 Agent 状态反馈与可扩展联动思路 |
 | [Desktop Pet Framework](https://github.com/solt-frfr/desktop-pet-framework) | 桌宠动作与状态机 |
 | [OpenPet](https://github.com/X-T-E-R/OpenPet) | Tauri 透明窗口与外部控制 |
 | [SVG-edit](https://github.com/SVG-Edit/svgedit) | Animation Studio 的 SVG 画布、选择、变换和基础编辑内核 |

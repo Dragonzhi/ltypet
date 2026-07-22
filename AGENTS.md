@@ -85,6 +85,15 @@
 - 番茄钟等长期计时使用时间戳或原生层保证准确性，不依赖前端 interval 累加秒数。
 - Rust 原生路径不得因普通 API 失败而 `panic`；向前端返回错误或记录可诊断日志。
 
+### 创作者插件与外部事件
+
+- 此处“创作者插件”是 ltypet 产品扩展协议，不等同于 Tauri 官方插件；两者的权限、安装和信任边界不得混用。
+- Codex、Claude Code、IDE、媒体播放器等外部联动属于产品插件，不是核心组件中的特判逻辑。核心只消费版本化、可校验的观察事件。
+- 第三方插件默认不可信。不得在主进程或 WebView 中直接加载第三方任意 JS/Rust，也不得向插件暴露 API key、Tauri command、DOM、原始窗口控制或主程序 capability。
+- 插件事件必须经过来源授权、schema、大小、频率、去重和隐私策略，再由核心映射为语义动作并提交 `BehaviorScheduler`；插件不能直接提交可信动作或伪造成功结果。
+- 插件 manifest、宿主兼容版本、权限和事件类型必须显式声明。安装、启用、禁用、卸载、崩溃和版本不兼容都要有可恢复路径。
+- 开发 Agent 插件默认只传生命周期状态，不传代码、prompt、工具参数、终端输出或文件内容；增加任何敏感字段都需要独立权限、脱敏和用户可见说明。
+
 ### React 与 TypeScript
 
 - 保持 `strict`、`noUnusedLocals`、`noUnusedParameters` 和 `noFallthroughCasesInSwitch` 通过，不用 `any` 或关闭检查掩盖问题。
