@@ -1,22 +1,25 @@
 import type { ActionRequest, ActionResult } from "../actions/types";
 import type { ActionExecutor } from "../scheduler/types";
-import type { CharacterRenderer, WindowController } from "./types";
+import type { CharacterRenderer, TimerController, WindowController } from "./types";
 
 export interface PetActionExecutorOptions {
   renderer: CharacterRenderer;
   windowController: WindowController;
+  timerController?: TimerController;
   clock?: () => number;
 }
 
 export class PetActionExecutor implements ActionExecutor {
   private renderer: CharacterRenderer;
   private windowController: WindowController;
+  private timerController?: TimerController;
   private clock: () => number;
   private disposed = false;
 
   constructor(options: PetActionExecutorOptions) {
     this.renderer = options.renderer;
     this.windowController = options.windowController;
+    this.timerController = options.timerController;
     this.clock = options.clock ?? (() => Date.now());
   }
 
@@ -93,10 +96,38 @@ export class PetActionExecutor implements ActionExecutor {
           );
           return { actionId: action.id, status: "completed", finishedAt: this.clock() };
         }
+        case "timer.start": {
+          if (!this.timerController) return this.unavailableTimerResult(action.id);
+          await this.withAbort(
+            () => this.timerController!.start({
+              timerId: action.id,
+              durationMs: action.payload.durationMs,
+              label: action.payload.label,
+              kind: action.payload.kind,
+            }),
+            signal,
+            () => {
+              void this.timerController!.cancel(action.id).catch(() => undefined);
+            },
+          );
+          return { actionId: action.id, status: "completed", finishedAt: this.clock() };
+        }
+        case "timer.pause": {
+          if (!this.timerController) return this.unavailableTimerResult(action.id);
+          await this.withAbort(() => this.timerController!.pause(action.payload.timerId), signal);
+          return { actionId: action.id, status: "completed", finishedAt: this.clock() };
+        }
+        case "timer.resume": {
+          if (!this.timerController) return this.unavailableTimerResult(action.id);
+          await this.withAbort(() => this.timerController!.resume(action.payload.timerId), signal);
+          return { actionId: action.id, status: "completed", finishedAt: this.clock() };
+        }
+        case "timer.cancel": {
+          if (!this.timerController) return this.unavailableTimerResult(action.id);
+          await this.withAbort(() => this.timerController!.cancel(action.payload.timerId), signal);
+          return { actionId: action.id, status: "completed", finishedAt: this.clock() };
+        }
         case "speech.say":
-        case "timer.start":
-        case "timer.pause":
-        case "timer.cancel":
           return { actionId: action.id, status: "rejected", errorCode: "renderer_unavailable", reason: "该能力尚未实现", finishedAt: this.clock() };
         case "wait":
           return { actionId: action.id, status: "rejected", errorCode: "unsupported_action", reason: "wait 不应到达执行器", finishedAt: this.clock() };
@@ -108,7 +139,9 @@ export class PetActionExecutor implements ActionExecutor {
       if (
         error instanceof Error &&
         "code" in error &&
-        (error.code === "unsupported_action" || error.code === "renderer_unavailable")
+        (error.code === "unsupported_action" ||
+          error.code === "renderer_unavailable" ||
+          String(error.code).startsWith("timer_"))
       ) {
         return {
           actionId: action.id,
@@ -125,6 +158,17 @@ export class PetActionExecutor implements ActionExecutor {
   dispose(): void {
     this.renderer.dispose();
     this.windowController.dispose();
+    this.timerController?.dispose();
     this.disposed = true;
+  }
+
+  private unavailableTimerResult(actionId: string): ActionResult {
+    return {
+      actionId,
+      status: "rejected",
+      errorCode: "renderer_unavailable",
+      reason: "番茄钟控制器不可用",
+      finishedAt: this.clock(),
+    };
   }
 }

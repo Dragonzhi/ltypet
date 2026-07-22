@@ -45,6 +45,7 @@ export function isActionSupported(
       return capabilities.speech === true;
     case "timer.start":
     case "timer.pause":
+    case "timer.resume":
     case "timer.cancel":
       return capabilities.timer === true;
     case "wait":

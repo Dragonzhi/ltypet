@@ -1,8 +1,9 @@
-import { createContext, useContext, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { BehaviorScheduler } from "../domain/scheduler/scheduler";
 import { PetActionExecutor } from "../domain/controllers/executor";
 import { SvgCharacterRenderer } from "../controllers/SvgCharacterRenderer";
 import { TauriWindowController } from "../controllers/TauriWindowController";
+import { TauriTimerController } from "../controllers/TauriTimerController";
 import type { RendererCapabilities } from "../domain/capabilities/capabilities";
 import type { PetExpression } from "../components/TianyiArtwork";
 
@@ -11,6 +12,7 @@ export interface PetRuntime {
   executor: PetActionExecutor;
   renderer: SvgCharacterRenderer;
   windowController: TauriWindowController;
+  timerController: TauriTimerController;
   capabilities: RendererCapabilities;
 }
 
@@ -47,18 +49,48 @@ export function PetRuntimeProvider({
       onCapabilitiesChange: setCapabilities,
     });
     const windowController = new TauriWindowController();
-    const executor = new PetActionExecutor({ renderer, windowController });
+    const timerController = new TauriTimerController();
+    const executor = new PetActionExecutor({ renderer, windowController, timerController });
     const scheduler = new BehaviorScheduler({ executor });
     runtimeRef.current = {
       scheduler,
       executor,
       renderer,
       windowController,
+      timerController,
       capabilities,
     };
   }
 
   const runtime = runtimeRef.current;
+
+  useEffect(() => {
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    void runtime.timerController.onFinished((timer) => {
+      runtime.scheduler.submit(
+        {
+          id: `timer-reminder-${timer.timerId}-${timer.updatedAtUnixMs}`,
+          type: "motion.play",
+          payload: { motion: "wave", speed: 1 },
+          source: "timer",
+          requestedAt: Date.now(),
+          correlationId: timer.timerId,
+        },
+        { channel: "body-motion", priority: "timer" },
+      );
+    }).then((cleanup) => {
+      if (active) unsubscribe = cleanup;
+      else cleanup();
+    }).catch((error: unknown) => {
+      console.error("监听番茄钟完成事件失败：", error);
+    });
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [runtime]);
+
   const contextValue: PetRuntime = { ...runtime, capabilities };
 
   return (

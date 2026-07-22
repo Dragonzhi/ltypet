@@ -25,6 +25,7 @@ const VALID_ACTION_TYPES: readonly string[] = [
   "speech.say",
   "timer.start",
   "timer.pause",
+  "timer.resume",
   "timer.cancel",
   "wait",
 ];
@@ -219,6 +220,15 @@ function validateTimerStart(
       return fail("invalid_payload", "label 必须是字符串且不超过 64 字符");
     }
   }
+  if (
+    "kind" in payload &&
+    payload.kind !== undefined &&
+    payload.kind !== "focus" &&
+    payload.kind !== "break" &&
+    payload.kind !== "custom"
+  ) {
+    return fail("invalid_payload", "kind 必须是 focus、break 或 custom");
+  }
   return null;
 }
 
@@ -318,6 +328,7 @@ export function validateActionRequest(
       payloadError = validateTimerStart(payload);
       break;
     case "timer.pause":
+    case "timer.resume":
       payloadError = validateTimerPause(payload);
       break;
     case "timer.cancel":

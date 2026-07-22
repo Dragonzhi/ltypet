@@ -8,7 +8,7 @@
  */
 
 /** 当前设置结构版本号 */
-export const CURRENT_SCHEMA_VERSION = 1 as const;
+export const CURRENT_SCHEMA_VERSION = 2 as const;
 
 /** 窗口位置与外观状态 */
 export interface WindowSettings {
@@ -42,6 +42,18 @@ export interface AgentSettings {
   enabled: boolean;
 }
 
+/** 番茄钟时长与完成提醒偏好。 */
+export interface PomodoroSettings {
+  /** 默认专注时长（分钟），范围 [1, 180]。 */
+  focusMinutes: number;
+  /** 默认休息时长（分钟），范围 [1, 180]。 */
+  breakMinutes: number;
+  /** 计时完成时请求系统级注意提醒。 */
+  showSystemReminder: boolean;
+  /** 计时完成时播放系统提示音。 */
+  soundEnabled: boolean;
+}
+
 /** 完整的用户设置 */
 export interface PetSettings {
   schemaVersion: typeof CURRENT_SCHEMA_VERSION;
@@ -49,6 +61,7 @@ export interface PetSettings {
   animation: AnimationSettings;
   audio: AudioSettings;
   agent: AgentSettings;
+  pomodoro: PomodoroSettings;
 }
 
 /** 校验错误码 */

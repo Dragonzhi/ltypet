@@ -40,7 +40,11 @@ export type ActionErrorCode =
   | "user_override"
   | "cooldown_active"
   | "permission_denied"
-  | "renderer_unavailable";
+  | "renderer_unavailable"
+  | "timer_conflict"
+  | "timer_not_found"
+  | "timer_invalid_state"
+  | "timer_native_error";
 
 // --- Window target (used by window.move payload) ---
 export type WindowSemanticPosition =
@@ -91,9 +95,14 @@ export interface SpeechSayPayload {
 export interface TimerStartPayload {
   durationMs: number;
   label?: string;
+  kind?: "focus" | "break" | "custom";
 }
 
 export interface TimerPausePayload {
+  timerId: string;
+}
+
+export interface TimerResumePayload {
   timerId: string;
 }
 
@@ -115,6 +124,7 @@ export interface ActionPayloadMap {
   "speech.say": SpeechSayPayload;
   "timer.start": TimerStartPayload;
   "timer.pause": TimerPausePayload;
+  "timer.resume": TimerResumePayload;
   "timer.cancel": TimerCancelPayload;
   "wait": WaitPayload;
 }

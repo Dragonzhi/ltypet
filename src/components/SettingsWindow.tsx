@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type {
   PetSettings,
@@ -7,13 +8,20 @@ import type {
   AnimationSettings,
   AudioSettings,
   AgentSettings,
+  PomodoroSettings,
 } from "../domain/settings/types";
+import type { TimerKind, TimerSnapshot } from "../domain/controllers/types";
+import { TauriTimerController } from "../controllers/TauriTimerController";
 import { parseSettings } from "../domain/settings/validate";
 import { createDefaultSettings } from "../domain/settings/defaults";
 
 export default function SettingsWindow() {
   const [settings, setSettings] = useState<PetSettings | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [timer, setTimer] = useState<TimerSnapshot | null>(null);
+  const [timerError, setTimerError] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
+  const [timerController] = useState(() => new TauriTimerController());
 
   useEffect(() => {
     void (async () => {
@@ -34,6 +42,46 @@ export default function SettingsWindow() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    void listen<string>("settings-changed", (event) => {
+      const result = parseSettings(event.payload);
+      if (active && result.ok) setSettings(result.settings);
+    }).then((cleanup) => {
+      if (active) unsubscribe = cleanup;
+      else cleanup();
+    }).catch(() => undefined);
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    void timerController.getState().then((state) => {
+      if (active) setTimer(state);
+    }).catch((error: unknown) => {
+      if (active) setTimerError(String(error));
+    });
+    void timerController.onStateChange((event) => {
+      if (active) setTimer(event.timer);
+    }).then((cleanup) => {
+      if (active) unsubscribe = cleanup;
+      else cleanup();
+    }).catch((error: unknown) => {
+      if (active) setTimerError(String(error));
+    });
+    const interval = window.setInterval(() => setNow(Date.now()), 500);
+    return () => {
+      active = false;
+      unsubscribe?.();
+      window.clearInterval(interval);
+    };
+  }, [timerController]);
 
   if (!settings) {
     return (
@@ -64,6 +112,43 @@ export default function SettingsWindow() {
 
   const updateAgent = (partial: Partial<AgentSettings>) =>
     save({ ...settings, agent: { ...settings.agent, ...partial } });
+
+  const updatePomodoro = (partial: Partial<PomodoroSettings>) =>
+    save({ ...settings, pomodoro: { ...settings.pomodoro, ...partial } });
+
+  const runTimerCommand = async (
+    command: () => Promise<TimerSnapshot>,
+    clearAfter = false,
+  ) => {
+    setTimerError(null);
+    try {
+      const snapshot = await command();
+      setTimer(clearAfter ? null : snapshot);
+    } catch (error) {
+      setTimerError(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  const startTimer = (kind: TimerKind) => {
+    const minutes = kind === "focus"
+      ? settings.pomodoro.focusMinutes
+      : settings.pomodoro.breakMinutes;
+    const timerId = typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `timer-${Date.now()}`;
+    void runTimerCommand(() => timerController.start({
+      timerId,
+      durationMs: minutes * 60_000,
+      kind,
+      label: kind === "focus" ? "专注时间" : "休息时间",
+      showSystemReminder: settings.pomodoro.showSystemReminder,
+      soundEnabled: settings.pomodoro.soundEnabled && settings.audio.enabled,
+    }));
+  };
+
+  const remainingMs = timer?.status === "running" && timer.deadlineUnixMs !== null
+    ? Math.max(0, timer.deadlineUnixMs - now)
+    : timer?.remainingMs ?? 0;
 
   return (
     <div style={containerStyle}>
@@ -134,6 +219,67 @@ export default function SettingsWindow() {
           </Row>
         </Section>
 
+        <Section title="番茄钟">
+          <Row label="专注时长（分钟）">
+            <input
+              type="number"
+              min="1"
+              max="180"
+              value={settings.pomodoro.focusMinutes}
+              onChange={(event) => updatePomodoro({
+                focusMinutes: Math.min(180, Math.max(1, Math.round(Number(event.target.value) || 1))),
+              })}
+              style={numberInputStyle}
+            />
+          </Row>
+          <Row label="休息时长（分钟）">
+            <input
+              type="number"
+              min="1"
+              max="180"
+              value={settings.pomodoro.breakMinutes}
+              onChange={(event) => updatePomodoro({
+                breakMinutes: Math.min(180, Math.max(1, Math.round(Number(event.target.value) || 1))),
+              })}
+              style={numberInputStyle}
+            />
+          </Row>
+          <Row label="完成时系统提醒">
+            <input
+              type="checkbox"
+              checked={settings.pomodoro.showSystemReminder}
+              onChange={(event) => updatePomodoro({ showSystemReminder: event.target.checked })}
+            />
+          </Row>
+          <Row label="完成时提示音">
+            <input
+              type="checkbox"
+              checked={settings.pomodoro.soundEnabled}
+              onChange={(event) => updatePomodoro({ soundEnabled: event.target.checked })}
+            />
+          </Row>
+          <div style={timerStatusStyle} aria-live="polite">
+            {timer
+              ? `${timer.label || "计时"} · ${timer.status === "running" ? "进行中" : "已暂停"} · ${formatDuration(remainingMs)}`
+              : "当前没有计时"}
+          </div>
+          <div style={timerActionsStyle}>
+            <button style={btnStyle} disabled={timer !== null} onClick={() => startTimer("focus")}>开始专注</button>
+            <button style={btnStyle} disabled={timer !== null} onClick={() => startTimer("break")}>开始休息</button>
+            {timer?.status === "running" && (
+              <button style={btnStyle} onClick={() => void runTimerCommand(() => timerController.pause(timer.timerId))}>暂停</button>
+            )}
+            {timer?.status === "paused" && (
+              <button style={btnStyle} onClick={() => void runTimerCommand(() => timerController.resume(timer.timerId))}>继续</button>
+            )}
+            {timer && (
+              <button style={dangerBtnStyle} onClick={() => void runTimerCommand(() => timerController.cancel(timer.timerId), true)}>取消</button>
+            )}
+          </div>
+          {timerError && <div style={warnStyle}>{timerError}</div>}
+          <p style={hintStyle}>关闭设置窗口或重启桌宠不会丢失正在进行或暂停的计时。</p>
+        </Section>
+
         <Section title="Agent">
           <Row label="启用 Agent">
             <input
@@ -189,6 +335,13 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+function formatDuration(durationMs: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(durationMs / 1_000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
 const containerStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
@@ -238,6 +391,27 @@ const valueStyle: CSSProperties = {
   textAlign: "right",
   color: "#666",
   fontVariantNumeric: "tabular-nums",
+};
+
+const numberInputStyle: CSSProperties = {
+  width: 72,
+  padding: "4px 6px",
+};
+
+const timerStatusStyle: CSSProperties = {
+  marginTop: 8,
+  padding: "8px 10px",
+  borderRadius: 4,
+  background: "#eef8f7",
+  color: "#176b66",
+  fontVariantNumeric: "tabular-nums",
+};
+
+const timerActionsStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
+  marginTop: 8,
 };
 
 const hintStyle: CSSProperties = {

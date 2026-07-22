@@ -71,6 +71,7 @@ const DEFAULT_CHANNEL: Record<string, Channel | undefined> = {
   "speech.say": "speech",
   "timer.start": "timer",
   "timer.pause": "timer",
+  "timer.resume": "timer",
   "timer.cancel": "timer",
   // "wait" has no channel — handled internally by scheduler
 };

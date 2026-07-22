@@ -78,6 +78,13 @@ function validateRanges(settings: PetSettings): string | null {
     return "audio.volume 必须在 [0, 1] 范围内";
   }
 
+  if (!Number.isInteger(settings.pomodoro.focusMinutes) || settings.pomodoro.focusMinutes < 1 || settings.pomodoro.focusMinutes > 180) {
+    return "pomodoro.focusMinutes 必须是 [1, 180] 范围内的整数";
+  }
+  if (!Number.isInteger(settings.pomodoro.breakMinutes) || settings.pomodoro.breakMinutes < 1 || settings.pomodoro.breakMinutes > 180) {
+    return "pomodoro.breakMinutes 必须是 [1, 180] 范围内的整数";
+  }
+
   // window.x/y 可以是 NaN（未保存过位置）或有限数字
   if (!Number.isNaN(settings.window.x) && !Number.isFinite(settings.window.x)) {
     return "window.x 必须是有限数字或 NaN";

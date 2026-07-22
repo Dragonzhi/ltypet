@@ -26,5 +26,11 @@ export function createDefaultSettings(): PetSettings {
     agent: {
       enabled: false,
     },
+    pomodoro: {
+      focusMinutes: 25,
+      breakMinutes: 5,
+      showSystemReminder: true,
+      soundEnabled: true,
+    },
   };
 }

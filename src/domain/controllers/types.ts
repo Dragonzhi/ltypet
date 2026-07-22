@@ -48,3 +48,48 @@ export interface WindowController {
   center(): Promise<void>;
   dispose(): void;
 }
+
+export type TimerStatus = "running" | "paused";
+export type TimerKind = "focus" | "break" | "custom";
+
+export interface TimerSnapshot {
+  schemaVersion: number;
+  timerId: string;
+  kind: TimerKind;
+  label: string;
+  status: TimerStatus;
+  durationMs: number;
+  remainingMs: number;
+  startedAtUnixMs: number;
+  updatedAtUnixMs: number;
+  deadlineUnixMs: number | null;
+  showSystemReminder: boolean;
+  soundEnabled: boolean;
+}
+
+export interface TimerStartOptions {
+  timerId: string;
+  durationMs: number;
+  label?: string;
+  kind?: TimerKind;
+  /** 省略时由原生层读取已保存的番茄钟偏好。 */
+  showSystemReminder?: boolean;
+  /** 省略时由原生层读取番茄钟与全局声音偏好。 */
+  soundEnabled?: boolean;
+}
+
+export interface TimerStateEvent {
+  reason: "started" | "paused" | "resumed" | "cancelled" | "finished";
+  timer: TimerSnapshot | null;
+}
+
+export interface TimerController {
+  getState(): Promise<TimerSnapshot | null>;
+  start(options: TimerStartOptions): Promise<TimerSnapshot>;
+  pause(timerId: string): Promise<TimerSnapshot>;
+  resume(timerId: string): Promise<TimerSnapshot>;
+  cancel(timerId: string): Promise<TimerSnapshot>;
+  onStateChange(listener: (event: TimerStateEvent) => void): Promise<() => void>;
+  onFinished(listener: (timer: TimerSnapshot) => void): Promise<() => void>;
+  dispose(): void;
+}

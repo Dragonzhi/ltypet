@@ -53,6 +53,10 @@ function mergeWithDefaults(obj: Record<string, unknown>): PetSettings {
     ? obj.agent as Record<string, unknown>
     : {};
 
+  const pomodoro = typeof obj.pomodoro === "object" && obj.pomodoro !== null
+    ? obj.pomodoro as Record<string, unknown>
+    : {};
+
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     window: {
@@ -70,6 +74,12 @@ function mergeWithDefaults(obj: Record<string, unknown>): PetSettings {
     },
     agent: {
       enabled: typeof agent.enabled === "boolean" ? agent.enabled : defaults.agent.enabled,
+    },
+    pomodoro: {
+      focusMinutes: typeof pomodoro.focusMinutes === "number" ? pomodoro.focusMinutes : defaults.pomodoro.focusMinutes,
+      breakMinutes: typeof pomodoro.breakMinutes === "number" ? pomodoro.breakMinutes : defaults.pomodoro.breakMinutes,
+      showSystemReminder: typeof pomodoro.showSystemReminder === "boolean" ? pomodoro.showSystemReminder : defaults.pomodoro.showSystemReminder,
+      soundEnabled: typeof pomodoro.soundEnabled === "boolean" ? pomodoro.soundEnabled : defaults.pomodoro.soundEnabled,
     },
   };
 }

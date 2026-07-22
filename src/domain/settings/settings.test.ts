@@ -43,16 +43,32 @@ describe("settings domain", () => {
       const settings = createDefaultSettings();
       expect(settings.agent.enabled).toBe(false);
     });
+
+    it("番茄钟默认使用 25 分钟专注和 5 分钟休息", () => {
+      const settings = createDefaultSettings();
+      expect(settings.pomodoro).toEqual({
+        focusMinutes: 25,
+        breakMinutes: 5,
+        showSystemReminder: true,
+        soundEnabled: true,
+      });
+    });
   });
 
   describe("parseSettings — 合法输入", () => {
     it("解析完整的 JSON 字符串", () => {
       const json = JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         window: { x: 100, y: 200, alwaysOnTop: false, clickThrough: false },
         animation: { intensity: 0.5 },
         audio: { enabled: false, volume: 0.3 },
         agent: { enabled: true },
+        pomodoro: {
+          focusMinutes: 25,
+          breakMinutes: 5,
+          showSystemReminder: true,
+          soundEnabled: true,
+        },
       });
       const result = parseSettings(json);
       expect(result.ok).toBe(true);
@@ -202,6 +218,28 @@ describe("settings domain", () => {
       expect(settings.window.alwaysOnTop).toBe(true); // 默认值
       expect(settings.agent.enabled).toBe(false); // 默认值
     });
+
+    it("番茄钟分钟数必须是 1 到 180 的整数", () => {
+      const result = parseSettings({
+        ...createDefaultSettings(),
+        pomodoro: {
+          ...createDefaultSettings().pomodoro,
+          focusMinutes: 0,
+        },
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toContain("focusMinutes");
+    });
+
+    it("从 schema v1 迁移时保留旧设置并补充番茄钟", () => {
+      const settings = migrate({
+        schemaVersion: 1,
+        window: { x: 100, y: 200, alwaysOnTop: false },
+      });
+      expect(settings.schemaVersion).toBe(2);
+      expect(settings.window.alwaysOnTop).toBe(false);
+      expect(settings.pomodoro.focusMinutes).toBe(25);
+    });
   });
 
   describe("serializeSettings", () => {
@@ -214,11 +252,17 @@ describe("settings domain", () => {
 
     it("序列化包含所有字段", () => {
       const settings: PetSettings = {
-        schemaVersion: 1,
+        schemaVersion: 2,
         window: { x: 100, y: 200, alwaysOnTop: false, clickThrough: true },
         animation: { intensity: 0.7 },
         audio: { enabled: false, volume: 0.5 },
         agent: { enabled: true },
+        pomodoro: {
+          focusMinutes: 25,
+          breakMinutes: 5,
+          showSystemReminder: true,
+          soundEnabled: true,
+        },
       };
       const json = serializeSettings(settings);
       const parsed = JSON.parse(json);

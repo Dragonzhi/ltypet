@@ -110,6 +110,18 @@ describe("合法输入通过校验", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("合法的 timer.resume 通过校验", () => {
+    const result = validateActionRequest({
+      protocolVersion: 1,
+      id: "test-1",
+      type: "timer.resume",
+      source: "dev",
+      requestedAt: 1000,
+      payload: { timerId: "timer-1" },
+    });
+    expect(result.ok).toBe(true);
+  });
+
   it("合法的 timer.cancel 通过校验", () => {
     const result = validateActionRequest({
       protocolVersion: 1,

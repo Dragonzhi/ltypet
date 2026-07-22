@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import { SettingsStore } from "../controllers/SettingsStore";
 import type { PetSettings } from "../domain/settings/types";
 import { createDefaultSettings } from "../domain/settings/defaults";
-import { hasSavedPosition } from "../domain/settings/validate";
+import { hasSavedPosition, parseSettings } from "../domain/settings/validate";
 
 /**
  * 设置管理 hook。
@@ -80,6 +81,22 @@ export function useSettings() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    void listen<string>("settings-changed", (event) => {
+      const parsed = parseSettings(event.payload);
+      if (active && parsed.ok) setSettings(parsed.settings);
+    }).then((cleanup) => {
+      if (active) unsubscribe = cleanup;
+      else cleanup();
+    }).catch(() => undefined);
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, []);
+
   // 卸载时取消未完成的保存
   useEffect(() => {
     return () => {
@@ -101,6 +118,7 @@ export function useSettings() {
           animation: { ...base.animation, ...partial.animation },
           audio: { ...base.audio, ...partial.audio },
           agent: { ...base.agent, ...partial.agent },
+          pomodoro: { ...base.pomodoro, ...partial.pomodoro },
         };
         storeRef.current?.saveDebounced(next);
         return next;

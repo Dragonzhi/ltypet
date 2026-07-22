@@ -31,6 +31,7 @@ const ACTION_TYPES: ActionType[] = [
   "speech.say",
   "timer.start",
   "timer.pause",
+  "timer.resume",
   "timer.cancel",
   "wait",
 ];
@@ -186,6 +187,7 @@ function buildPayload(
       return payload;
     }
     case "timer.pause":
+    case "timer.resume":
       return { timerId: form.timerId };
     case "timer.cancel":
       return { timerId: form.timerId };
@@ -216,7 +218,7 @@ export default function DebugConsole(): ReactNode {
       renderer: capabilities,
       window: true,
       speech: false,
-      timer: false,
+      timer: true,
     }),
     [capabilities],
   );
@@ -283,6 +285,9 @@ export default function DebugConsole(): ReactNode {
         options.cooldownMs = WINDOW_MOVE_CONFIG.minIntervalMs;
       }
       scheduler.submit(result.action, options);
+      if (result.action.type === "timer.start") {
+        updateField("timerId", result.action.id);
+      }
     }
     setValidationResult(result);
   };
@@ -613,6 +618,7 @@ export default function DebugConsole(): ReactNode {
           </>
         );
       case "timer.pause":
+      case "timer.resume":
       case "timer.cancel":
         return (
           <div className="debug-row">

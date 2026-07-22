@@ -1,10 +1,13 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod timer;
+
 use serde::Deserialize;
 use std::fs;
 use std::sync::OnceLock;
 use tauri::menu::{CheckMenuItemBuilder, MenuBuilder, MenuEvent, MenuItemBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{Emitter, LogicalPosition, Manager, WebviewUrl};
+use tauri::{Emitter, LogicalPosition, Manager, State, WebviewUrl};
+use timer::{TimerManager, TimerResult, TimerSnapshot, TimerStartRequest};
 use windows::Win32::Foundation::{LPARAM, LRESULT, POINT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
     GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
@@ -192,12 +195,104 @@ async fn save_settings(app: tauri::AppHandle, json: String) -> Result<(), String
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join("settings.json");
     let tmp_path = dir.join("settings.json.tmp");
+    let backup_path = dir.join("settings.json.bak");
     fs::write(&tmp_path, &json).map_err(|e| e.to_string())?;
+    if backup_path.exists() {
+        let _ = fs::remove_file(&backup_path);
+    }
+    if path.exists() {
+        fs::rename(&path, &backup_path).map_err(|e| {
+            let _ = fs::remove_file(&tmp_path);
+            e.to_string()
+        })?;
+    }
     fs::rename(&tmp_path, &path).map_err(|e| {
+        if backup_path.exists() {
+            let _ = fs::rename(&backup_path, &path);
+        }
         let _ = fs::remove_file(&tmp_path);
         e.to_string()
     })?;
+    let _ = app.emit("settings-changed", json);
     Ok(())
+}
+
+fn read_timer_preferences(app: &tauri::AppHandle) -> (bool, bool) {
+    let Ok(dir) = app.path().app_data_dir() else {
+        return (true, true);
+    };
+    let Ok(content) = fs::read_to_string(dir.join("settings.json")) else {
+        return (true, true);
+    };
+    let Ok(settings) = serde_json::from_str::<serde_json::Value>(&content) else {
+        return (true, true);
+    };
+    let show_system_reminder = settings
+        .pointer("/pomodoro/showSystemReminder")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(true);
+    let pomodoro_sound = settings
+        .pointer("/pomodoro/soundEnabled")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(true);
+    let global_sound = settings
+        .pointer("/audio/enabled")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(true);
+    (show_system_reminder, pomodoro_sound && global_sound)
+}
+
+#[tauri::command]
+fn timer_get_state(timer: State<'_, TimerManager>) -> TimerResult<Option<TimerSnapshot>> {
+    timer.get_state()
+}
+
+#[tauri::command]
+fn timer_start(
+    app: tauri::AppHandle,
+    timer: State<'_, TimerManager>,
+    mut request: TimerStartRequest,
+) -> TimerResult<TimerSnapshot> {
+    let (show_system_reminder, sound_enabled) = read_timer_preferences(&app);
+    request
+        .show_system_reminder
+        .get_or_insert(show_system_reminder);
+    request.sound_enabled.get_or_insert(sound_enabled);
+    timer.start(&app, request)
+}
+
+#[tauri::command]
+fn timer_pause(
+    app: tauri::AppHandle,
+    timer: State<'_, TimerManager>,
+    timer_id: String,
+) -> TimerResult<TimerSnapshot> {
+    timer.pause(&app, &timer_id)
+}
+
+#[tauri::command]
+fn timer_resume(
+    app: tauri::AppHandle,
+    timer: State<'_, TimerManager>,
+    timer_id: String,
+) -> TimerResult<TimerSnapshot> {
+    timer.resume(&app, &timer_id)
+}
+
+#[tauri::command]
+fn timer_cancel(
+    app: tauri::AppHandle,
+    timer: State<'_, TimerManager>,
+    timer_id: String,
+) -> TimerResult<TimerSnapshot> {
+    timer.cancel(&app, &timer_id)
+}
+
+#[tauri::command]
+fn timer_take_pending_finished(
+    timer: State<'_, TimerManager>,
+) -> TimerResult<Option<TimerSnapshot>> {
+    timer.take_pending_finished()
 }
 
 #[tauri::command]
@@ -382,11 +477,21 @@ pub fn run() {
             load_secrets,
             save_secrets,
             open_settings,
-            stop_all_behaviors
+            stop_all_behaviors,
+            timer_get_state,
+            timer_start,
+            timer_pause,
+            timer_resume,
+            timer_cancel,
+            timer_take_pending_finished
         ])
         .setup(|app| {
             create_tray(app)?;
             let app_handle = app.handle().clone();
+            let timer_path = app.path().app_data_dir()?.join("timer-state.json");
+            let timer_manager = TimerManager::load(timer_path);
+            app.manage(timer_manager.clone());
+            timer_manager.recover(app_handle.clone());
             // 启动全局鼠标钩子（追踪全局鼠标位置与左键释放）。
             start_global_mouse_hook(app_handle);
             Ok(())

@@ -1,6 +1,13 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import type { ActionRequest, ActionSource, WindowTarget } from "../actions/types";
-import type { MotionOptions, ExpressionOptions, ResetReason } from "./types";
+import type {
+  MotionOptions,
+  ExpressionOptions,
+  ResetReason,
+  TimerSnapshot,
+  TimerStartOptions,
+  TimerStateEvent,
+} from "./types";
 import { PetActionExecutor } from "./executor";
 
 // --- Fake controllers (structural duck typing, no implements keyword to avoid import issues) ---
@@ -86,6 +93,49 @@ class FakeWindowController {
   async setAlwaysOnTop(value: boolean) { this.calls.push({ method: "setAlwaysOnTop", args: [value] }); }
   async center() { this.calls.push({ method: "center", args: [] }); }
   dispose(): void { this.disposed = true; }
+}
+
+class FakeTimerController {
+  calls: { method: string; args: unknown[] }[] = [];
+  disposed = false;
+
+  private snapshot(timerId: string, status: "running" | "paused" = "running"): TimerSnapshot {
+    return {
+      schemaVersion: 1,
+      timerId,
+      kind: "focus",
+      label: "专注",
+      status,
+      durationMs: 5_000,
+      remainingMs: 5_000,
+      startedAtUnixMs: 1_000,
+      updatedAtUnixMs: 1_000,
+      deadlineUnixMs: status === "running" ? 6_000 : null,
+      showSystemReminder: true,
+      soundEnabled: true,
+    };
+  }
+
+  async getState() { return null; }
+  async start(options: TimerStartOptions) {
+    this.calls.push({ method: "start", args: [options] });
+    return this.snapshot(options.timerId);
+  }
+  async pause(timerId: string) {
+    this.calls.push({ method: "pause", args: [timerId] });
+    return this.snapshot(timerId, "paused");
+  }
+  async resume(timerId: string) {
+    this.calls.push({ method: "resume", args: [timerId] });
+    return this.snapshot(timerId);
+  }
+  async cancel(timerId: string) {
+    this.calls.push({ method: "cancel", args: [timerId] });
+    return this.snapshot(timerId);
+  }
+  async onStateChange(_listener: (event: TimerStateEvent) => void) { return () => undefined; }
+  async onFinished(_listener: (timer: TimerSnapshot) => void) { return () => undefined; }
+  dispose() { this.disposed = true; }
 }
 
 function makeAction(id: string, type: string, payload: Record<string, unknown>, source: ActionSource = "dev"): ActionRequest {
@@ -376,6 +426,34 @@ describe("outfit.equip 分发", () => {
     expect(result.status).toBe("interrupted");
     expect(result.actionId).toBe("test-11");
     expect(ctx.renderer.resetCalls).toContain("interrupt");
+  });
+});
+
+describe("番茄钟动作分发", () => {
+  it("start、pause、resume 和 cancel 共用 TimerController", async () => {
+    const renderer = new FakeRenderer();
+    const windowController = new FakeWindowController();
+    const timerController = new FakeTimerController();
+    const executor = new PetActionExecutor({ renderer, windowController, timerController });
+    const signal = new AbortController().signal;
+
+    await expect(executor.execute(makeAction("timer-1", "timer.start", {
+      durationMs: 5_000,
+      label: "专注",
+      kind: "focus",
+    }), signal)).resolves.toMatchObject({ status: "completed" });
+    await executor.execute(makeAction("pause-1", "timer.pause", { timerId: "timer-1" }), signal);
+    await executor.execute(makeAction("resume-1", "timer.resume", { timerId: "timer-1" }), signal);
+    await executor.execute(makeAction("cancel-1", "timer.cancel", { timerId: "timer-1" }), signal);
+
+    expect(timerController.calls).toEqual([
+      { method: "start", args: [{ timerId: "timer-1", durationMs: 5_000, label: "专注", kind: "focus" }] },
+      { method: "pause", args: ["timer-1"] },
+      { method: "resume", args: ["timer-1"] },
+      { method: "cancel", args: ["timer-1"] },
+    ]);
+    executor.dispose();
+    expect(timerController.disposed).toBe(true);
   });
 });
 
