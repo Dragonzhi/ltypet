@@ -33,6 +33,14 @@
   height: 100% !important;
 }
 
+/* svgcanvas 构造时生成 640×480 白色画布底（#canvasBackground > rect），
+   会在角色四周露出一块白框。编辑器舞台自带棋盘格背景，
+   此处将其设为完全透明，让角色透明区域透出舞台棋盘格。 */
+.canvas-container #canvasBackground > rect {
+  fill: transparent;
+  stroke: none;
+}
+
 .stage-tools {
   position: absolute;
   z-index: 20;

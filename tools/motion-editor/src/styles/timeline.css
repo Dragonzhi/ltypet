@@ -152,18 +152,28 @@
   overflow: auto;
 }
 
-/* 帧网格：每帧一条极淡竖线 */
+/* 帧网格：细线每帧一条、主线与标尺刻度同节奏。
+   --ppf / --ppf-major 由 TimelineTracks 按 pixelsPerFrame 注入，
+   保证网格线与关键帧位置在任意缩放级别下严格对齐。 */
 
 .timeline-content {
   position: relative;
   min-height: 100%;
-  background-image: repeating-linear-gradient(
-    to right,
-    transparent 0,
-    transparent 7px,
-    rgb(255 255 255 / 5%) 7px,
-    rgb(255 255 255 / 5%) 8px
-  );
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(var(--ppf-major, 40px) - 1px),
+      rgb(255 255 255 / 9%) calc(var(--ppf-major, 40px) - 1px),
+      rgb(255 255 255 / 9%) var(--ppf-major, 40px)
+    ),
+    repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(var(--ppf, 8px) - 1px),
+      rgb(255 255 255 / 5%) calc(var(--ppf, 8px) - 1px),
+      rgb(255 255 255 / 5%) var(--ppf, 8px)
+    );
 }
 
 .timeline-range {

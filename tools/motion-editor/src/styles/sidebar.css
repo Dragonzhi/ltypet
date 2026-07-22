@@ -1,9 +1,11 @@
-/* 左右侧栏：面板堆叠，段落标题采用小号大写字母（VS Code 风格） */
+/* 左右侧栏：顶部固定分页标签 + 单页滚动，替代多面板堆叠滚动 */
 
 .left-sidebar,
 .right-sidebar {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   background: var(--bg-panel);
 }
 
@@ -17,6 +19,88 @@
   grid-column: 3;
   grid-row: 2;
   border-left: 1px solid var(--border-subtle);
+}
+
+/* 分页标签条：活动页以下方强调条标识 */
+
+.sidebar-tabs {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  padding: 6px 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sidebar-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: transparent;
+  box-shadow: none;
+}
+
+.sidebar-tab:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgb(255 255 255 / 5%);
+}
+
+.sidebar-tab[aria-selected="true"],
+.sidebar-tab[aria-selected="true"]:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgb(255 255 255 / 4%);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* 诊断等问题计数徽章 */
+
+.tab-badge {
+  min-width: 16px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--warning-text);
+  background: rgb(224 161 62 / 16%);
+}
+
+/* 分页面板：非活动页保持挂载但隐藏（保留面板内部状态） */
+
+.sidebar-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.sidebar-page[hidden] {
+  display: none;
+}
+
+.sidebar-page > .panel:last-child {
+  border-bottom: 0;
+}
+
+/* 日志页：撑满整页高度，日志区内部滚动 */
+
+.sidebar-page > .log-section {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar-page > .log-section .log {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
 }
 
 .panel {

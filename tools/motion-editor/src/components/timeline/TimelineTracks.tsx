@@ -51,6 +51,8 @@ export function TimelineTracks({
 }: TimelineTracksProps) {
   const labelsRef = useRef<HTMLDivElement>(null);
   const selectedSet = new Set(selectedKeyframes.map((ref) => keyframeRefKey(ref)));
+  // 标尺刻度节奏与背景主线共用，保证数字刻度、主线、关键帧三者严格对齐
+  const tickEvery = Math.max(1, Math.round(40 / pixelsPerFrame));
 
   const setFrameFromPointer = (clientX: number): void => {
     const scroll = scrollRef.current;
@@ -89,7 +91,15 @@ export function TimelineTracks({
           }
         }}
       >
-        <div className="timeline-content" style={{ width }}>
+        <div
+          className="timeline-content"
+          style={{
+            width,
+            // 背景网格周期跟随缩放，使网格线始终与帧/关键帧位置同步
+            "--ppf": `${pixelsPerFrame}px`,
+            "--ppf-major": `${tickEvery * pixelsPerFrame}px`,
+          } as React.CSSProperties}
+        >
           {visibleRange && (
             <div
               className="timeline-range"
@@ -109,7 +119,7 @@ export function TimelineTracks({
             }}
           >
             {Array.from({ length: clip.durationFrames + 1 }, (_, frame) => frame)
-              .filter((frame) => frame % Math.max(1, Math.round(40 / pixelsPerFrame)) === 0)
+              .filter((frame) => frame % tickEvery === 0)
               .map((frame) => (
                 <span key={frame} className="ruler-tick" style={{ left: frameToTimelineX(frame, pixelsPerFrame) }}>
                   {frame}

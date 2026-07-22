@@ -12,7 +12,7 @@
 .clip-list {
   display: grid;
   gap: 4px;
-  max-height: 180px;
+  max-height: min(360px, 50vh);
   overflow: auto;
 }
 

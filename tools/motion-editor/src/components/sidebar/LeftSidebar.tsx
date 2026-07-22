@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { CharacterRigV1, MotionClipV1, MotionLibraryV1 } from "@ltypet/character-motion";
 import type { MotionEditorHost } from "../../host/MotionEditorHost";
 import type { EditorCommand, KeyframeRef } from "../../editor/model/types";
@@ -5,6 +6,13 @@ import type { RecentMotionEditorProjectV1 } from "../../project/manifest";
 import { PartTree } from "../parts/PartTree";
 import { ClipPanel } from "../clips/ClipPanel";
 import { RecentProjects } from "../projects/RecentProjects";
+import { SidebarPage, SidebarTabs } from "./SidebarTabs";
+
+const LEFT_TABS = [
+  { id: "parts", label: "部件" },
+  { id: "clips", label: "片段" },
+  { id: "projects", label: "项目" },
+];
 
 export interface LeftSidebarProps {
   rig: CharacterRigV1 | null;
@@ -57,40 +65,48 @@ export function LeftSidebar({
   onRefreshRecentProjects,
   onAddLog,
 }: LeftSidebarProps) {
+  const [activeTab, setActiveTab] = useState("parts");
   return (
     <aside className="left-sidebar">
-      {rig ? (
-        <PartTree
-          rig={rig}
-          selectedPartId={selectedPartId}
-          hiddenPartIds={hiddenPartIds}
-          lockedPartIds={lockedPartIds}
-          onSelect={onSelectPart}
-          onToggleHidden={onToggleHiddenPart}
-          onToggleLocked={onToggleLockedPart}
+      <SidebarTabs ariaLabel="左侧栏分页" tabs={LEFT_TABS} activeTab={activeTab} onChange={setActiveTab} />
+      <SidebarPage tabId="parts" activeTab={activeTab}>
+        {rig ? (
+          <PartTree
+            rig={rig}
+            selectedPartId={selectedPartId}
+            hiddenPartIds={hiddenPartIds}
+            lockedPartIds={lockedPartIds}
+            onSelect={onSelectPart}
+            onToggleHidden={onToggleHiddenPart}
+            onToggleLocked={onToggleLockedPart}
+          />
+        ) : <p className="placeholder panel">请先初始化并载入角色</p>}
+      </SidebarPage>
+      <SidebarPage tabId="clips" activeTab={activeTab}>
+        <ClipPanel
+          history={history}
+          activeClip={activeClip}
+          motionLibrary={motionLibrary}
+          activeClipId={activeClipId}
+          onSetActiveClipId={onSetActiveClipId}
+          onSetCurrentFrame={onSetCurrentFrame}
+          onSetSelectedKeyframes={onSetSelectedKeyframes}
+          onRunCommand={onRunCommand}
+          onStopAnimation={onStopAnimation}
         />
-      ) : <p className="placeholder panel">请先初始化并载入角色</p>}
-      <ClipPanel
-        history={history}
-        activeClip={activeClip}
-        motionLibrary={motionLibrary}
-        activeClipId={activeClipId}
-        onSetActiveClipId={onSetActiveClipId}
-        onSetCurrentFrame={onSetCurrentFrame}
-        onSetSelectedKeyframes={onSetSelectedKeyframes}
-        onRunCommand={onRunCommand}
-        onStopAnimation={onStopAnimation}
-      />
-      {host && (
-        <RecentProjects
-          host={host}
-          recentProjects={recentProjects}
-          hostBusy={hostBusy}
-          onOpenProjectRoot={onOpenProjectRoot}
-          onRefreshRecentProjects={onRefreshRecentProjects}
-          onAddLog={onAddLog}
-        />
-      )}
+      </SidebarPage>
+      <SidebarPage tabId="projects" activeTab={activeTab}>
+        {host ? (
+          <RecentProjects
+            host={host}
+            recentProjects={recentProjects}
+            hostBusy={hostBusy}
+            onOpenProjectRoot={onOpenProjectRoot}
+            onRefreshRecentProjects={onRefreshRecentProjects}
+            onAddLog={onAddLog}
+          />
+        ) : <p className="placeholder panel">最近项目在桌面端可用</p>}
+      </SidebarPage>
     </aside>
   );
 }
