@@ -30,6 +30,7 @@ describe("TauriOpenAICompatibleProvider", () => {
       model: "test-model",
       timeoutMs: 30_000,
       maxRetries: 1,
+      allowInsecureHttp: false,
     });
     const chunks: string[] = [];
     const promise = provider.stream(
@@ -42,6 +43,9 @@ describe("TauriOpenAICompatibleProvider", () => {
     mocks.listener?.({ payload: { requestId: "r1", eventType: "done" } });
     await promise;
     expect(chunks).toEqual(["你"]);
+    expect(mocks.invoke).toHaveBeenCalledWith("chat_start", {
+      request: expect.objectContaining({ allowInsecureHttp: false }),
+    });
     expect(mocks.unlisten).toHaveBeenCalledOnce();
   });
 
@@ -51,6 +55,7 @@ describe("TauriOpenAICompatibleProvider", () => {
       model: "model",
       timeoutMs: 30_000,
       maxRetries: 0,
+      allowInsecureHttp: false,
     });
     const controller = new AbortController();
     const promise = provider.stream(
@@ -80,6 +85,7 @@ describe("TauriOpenAICompatibleProvider", () => {
       model: "model",
       timeoutMs: 30_000,
       maxRetries: 0,
+      allowInsecureHttp: false,
     });
     const promise = provider.stream(
       { requestId: `error-${code}`, messages: [{ role: "user", content: "hello" }] },

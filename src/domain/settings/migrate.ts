@@ -87,6 +87,9 @@ function mergeWithDefaults(obj: Record<string, unknown>): PetSettings {
       externalDataConsent: typeof agent.externalDataConsent === "boolean"
         ? agent.externalDataConsent
         : defaults.agent.externalDataConsent,
+      allowInsecureHttp: typeof agent.allowInsecureHttp === "boolean"
+        ? agent.allowInsecureHttp
+        : defaults.agent.allowInsecureHttp,
     },
     pomodoro: {
       focusMinutes: typeof pomodoro.focusMinutes === "number" ? pomodoro.focusMinutes : defaults.pomodoro.focusMinutes,

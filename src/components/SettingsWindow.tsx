@@ -376,6 +376,7 @@ export default function SettingsWindow() {
                   style={textInputStyle}
                 />
               </Row>
+              <p style={hintStyle}>本地模型无需鉴权时可以留空；保存后才会发送 Bearer key。</p>
               <div style={timerActionsStyle}>
                 <button type="button" style={btnStyle} onClick={() => void saveApiKey()}>保存 API key</button>
                 <button type="button" style={dangerBtnStyle} disabled={!apiKeyPresent} onClick={() => void removeApiKey()}>删除 API key</button>
@@ -424,6 +425,18 @@ export default function SettingsWindow() {
                   onChange={(event) => updateAgent({ externalDataConsent: event.target.checked })}
                 />
               </Row>
+              <Row label="允许 HTTP 明文接口">
+                <input
+                  type="checkbox"
+                  checked={settings.agent.allowInsecureHttp}
+                  onChange={(event) => updateAgent({ allowInsecureHttp: event.target.checked })}
+                />
+              </Row>
+              {settings.agent.allowInsecureHttp && (
+                <div style={dangerNoticeStyle} role="alert">
+                  临时测试模式：API key、对话上下文和回复会通过 HTTP 明文传输。仅在你信任的 Radmin VPN 或局域网中使用，测试结束后请关闭。
+                </div>
+              )}
               <p style={hintStyle}>
                 仅发送输入及预算范围内的最近对话，不发送屏幕、窗口、应用状态或其他系统感知数据。
               </p>
@@ -606,6 +619,17 @@ const dangerBtnStyle: CSSProperties = {
   background: "#fef2f2",
   borderColor: "#fca5a5",
   color: "#b91c1c",
+};
+
+const dangerNoticeStyle: CSSProperties = {
+  marginTop: 8,
+  padding: "8px 10px",
+  borderRadius: 4,
+  background: "#fff1f2",
+  border: "1px solid #fda4af",
+  color: "#9f1239",
+  fontSize: 12,
+  lineHeight: 1.5,
 };
 
 const warnStyle: CSSProperties = {

@@ -8,7 +8,7 @@
  */
 
 /** 当前设置结构版本号 */
-export const CURRENT_SCHEMA_VERSION = 3 as const;
+export const CURRENT_SCHEMA_VERSION = 4 as const;
 
 /** 窗口位置与外观状态 */
 export interface WindowSettings {
@@ -54,6 +54,8 @@ export interface AgentSettings {
   maxRetries: number;
   /** 用户是否明确同意把对话文本发送给外部 Provider。 */
   externalDataConsent: boolean;
+  /** 临时测试用：是否明确允许向 HTTP 接口明文发送密钥和对话。 */
+  allowInsecureHttp: boolean;
 }
 
 /** 番茄钟时长与完成提醒偏好。 */

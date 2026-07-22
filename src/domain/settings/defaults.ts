@@ -32,6 +32,7 @@ export function createDefaultSettings(): PetSettings {
       timeoutMs: 45_000,
       maxRetries: 1,
       externalDataConsent: false,
+      allowInsecureHttp: false,
     },
     pomodoro: {
       focusMinutes: 25,

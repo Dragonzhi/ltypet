@@ -36,7 +36,7 @@
 - Windows 托盘提供显示、对话、设置和退出入口；左键托盘图标可恢复主窗口。
 - 设置窗口提供可靠番茄钟：可配置专注/休息时长、系统提醒和提示音，支持开始、暂停、继续、取消，并可在关闭设置窗口、应用重启或系统休眠后恢复和校正。
 - 独立对话窗口支持键盘发送、流式显示、停止生成与错误状态；默认离线 Mock，不产生联网或费用。
-- OpenAI-compatible Provider 通过原生 HTTPS/SSE 通信，可配置模型、上下文预算、超时与有限重试；外发前必须显式同意，且不会附带系统感知数据。
+- OpenAI-compatible Provider 通过原生 SSE 通信，可配置模型、上下文预算、超时与有限重试；默认强制 HTTPS，临时局域网/VPN 测试可显式允许 HTTP 明文传输；外发前必须同意，且不会附带系统感知数据。
 - API key 由 Windows 当前用户绑定的 DPAPI 加密，只在 Rust 原生请求期间解密；旧版明文密钥文件会一次性迁移并删除。
 - `ContextMenu`、`Shift+F10` 和 `Ctrl+Shift+Q` 键盘路径。
 - 独立的 Flash 风格 SVG Animation Studio MVP：Part/pivot、Clip、时间轴、关键帧、缓动、层级槽位、预览、撤销和 canonical rig/motions 导入导出；`wave` 已接入生产桌宠运行时。

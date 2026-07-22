@@ -56,6 +56,7 @@ export default function ChatWindow() {
 
   const provider = createProvider(settings);
   const isExternal = provider.external;
+  const insecureHttp = isExternal && requiresInsecureHttpOptIn(settings.agent.endpoint);
   const canSend = input.trim().length > 0 && runningRequestId === null;
 
   const submit = async (event?: FormEvent) => {
@@ -68,6 +69,10 @@ export default function ChatWindow() {
     }
     if (isExternal && (!settings.agent.model.trim() || !settings.agent.endpoint.trim())) {
       setError("请先在设置中填写模型名称与接口地址。");
+      return;
+    }
+    if (insecureHttp && !settings.agent.allowInsecureHttp) {
+      setError("这是远程 HTTP 明文接口。请先在设置中开启“允许 HTTP 明文接口”。");
       return;
     }
 
@@ -140,7 +145,9 @@ export default function ChatWindow() {
       </header>
 
       <div className={isExternal ? "chat-disclosure external" : "chat-disclosure"} role="note">
-        {isExternal
+        {insecureHttp && settings.agent.allowInsecureHttp
+          ? "HTTP 临时测试已开启：API key、最近对话和模型回复会经网络明文传输。不会附带窗口、屏幕、应用或其他系统感知数据。"
+          : isExternal
           ? "发送时会把当前输入及预算范围内的最近对话发送到配置的模型接口；不会附带窗口、屏幕、应用或其他系统感知数据。"
           : "当前使用离线 Mock Provider。输入仅在本窗口内存中处理，关闭窗口后不会保存会话。"}
       </div>
@@ -193,6 +200,7 @@ function createProvider(settings: PetSettings): ChatProvider {
       model: settings.agent.model.trim(),
       timeoutMs: settings.agent.timeoutMs,
       maxRetries: settings.agent.maxRetries,
+      allowInsecureHttp: settings.agent.allowInsecureHttp,
     });
   }
   return new MockChatProvider();
@@ -203,4 +211,14 @@ function createId(prefix: string): string {
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return `${prefix}-${suffix}`;
+}
+
+function requiresInsecureHttpOptIn(endpoint: string): boolean {
+  try {
+    const url = new URL(endpoint);
+    return url.protocol === "http:"
+      && !["localhost", "127.0.0.1", "::1", "[::1]"].includes(url.hostname);
+  } catch {
+    return false;
+  }
 }

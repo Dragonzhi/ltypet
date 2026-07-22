@@ -13,6 +13,7 @@ interface ProviderOptions {
   model: string;
   timeoutMs: number;
   maxRetries: number;
+  allowInsecureHttp: boolean;
 }
 
 interface NativeChatError {
@@ -73,6 +74,7 @@ export class TauriOpenAICompatibleProvider implements ChatProvider {
           messages: request.messages,
           timeoutMs: this.config.timeoutMs,
           maxRetries: this.config.maxRetries,
+          allowInsecureHttp: this.config.allowInsecureHttp,
         },
       });
       if (options.signal.aborted) {

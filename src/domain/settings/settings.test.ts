@@ -44,6 +44,7 @@ describe("settings domain", () => {
       expect(settings.agent.enabled).toBe(false);
       expect(settings.agent.provider).toBe("mock");
       expect(settings.agent.externalDataConsent).toBe(false);
+      expect(settings.agent.allowInsecureHttp).toBe(false);
     });
 
     it("番茄钟默认使用 25 分钟专注和 5 分钟休息", () => {
@@ -238,7 +239,7 @@ describe("settings domain", () => {
         schemaVersion: 1,
         window: { x: 100, y: 200, alwaysOnTop: false },
       });
-      expect(settings.schemaVersion).toBe(3);
+      expect(settings.schemaVersion).toBe(4);
       expect(settings.window.alwaysOnTop).toBe(false);
       expect(settings.pomodoro.focusMinutes).toBe(25);
       expect(settings.agent.provider).toBe("mock");

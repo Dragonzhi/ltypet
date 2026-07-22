@@ -41,6 +41,7 @@ pub struct ChatStartRequest {
     messages: Vec<ChatMessage>,
     timeout_ms: u64,
     max_retries: u8,
+    allow_insecure_http: bool,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -101,15 +102,22 @@ impl ChatStreamEvent {
     }
 }
 
-fn validate_endpoint(endpoint: &str) -> Result<Url, ChatError> {
+fn validate_endpoint(endpoint: &str, allow_insecure_http: bool) -> Result<Url, ChatError> {
     let url = Url::parse(endpoint)
         .map_err(|_| ChatError::new("invalid_configuration", "模型接口地址不是合法 URL", false))?;
     let local_http =
         url.scheme() == "http" && matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "::1"));
-    if url.scheme() != "https" && !local_http {
+    if url.scheme() == "http" && !local_http && !allow_insecure_http {
         return Err(ChatError::new(
             "invalid_configuration",
-            "模型接口必须使用 HTTPS；仅本机地址允许 HTTP",
+            "HTTP 明文接口尚未授权；请在设置中显式开启临时 HTTP 测试",
+            false,
+        ));
+    }
+    if url.scheme() != "https" && url.scheme() != "http" {
+        return Err(ChatError::new(
+            "invalid_configuration",
+            "模型接口只支持 HTTP 或 HTTPS",
             false,
         ));
     }
@@ -153,7 +161,7 @@ fn validate_request(request: &ChatStartRequest) -> Result<Url, ChatError> {
             false,
         ));
     }
-    validate_endpoint(&request.endpoint)
+    validate_endpoint(&request.endpoint, request.allow_insecure_http)
 }
 
 #[derive(Default)]
@@ -215,7 +223,7 @@ async fn stream_once(
     window_label: &str,
     request: &ChatStartRequest,
     endpoint: Url,
-    api_key: &str,
+    api_key: Option<&str>,
 ) -> Result<(), AttemptFailure> {
     let client = Client::builder()
         .timeout(Duration::from_millis(request.timeout_ms))
@@ -228,14 +236,15 @@ async fn stream_once(
             ),
             emitted_delta: false,
         })?;
-    let response = client
-        .post(endpoint)
-        .bearer_auth(api_key)
-        .json(&json!({
-            "model": request.model,
-            "messages": request.messages,
-            "stream": true
-        }))
+    let mut request_builder = client.post(endpoint).json(&json!({
+        "model": request.model,
+        "messages": request.messages,
+        "stream": true
+    }));
+    if let Some(api_key) = api_key {
+        request_builder = request_builder.bearer_auth(api_key);
+    }
+    let response = request_builder
         .send()
         .await
         .map_err(|error| AttemptFailure {
@@ -318,11 +327,19 @@ async fn run_chat(
     window_label: String,
     request: ChatStartRequest,
     endpoint: Url,
-    api_key: String,
+    api_key: Option<String>,
 ) -> Result<(), ChatError> {
     let mut attempt = 0u8;
     loop {
-        match stream_once(&app, &window_label, &request, endpoint.clone(), &api_key).await {
+        match stream_once(
+            &app,
+            &window_label,
+            &request,
+            endpoint.clone(),
+            api_key.as_deref(),
+        )
+        .await
+        {
             Ok(()) => return Ok(()),
             Err(failure)
                 if failure.error.retryable
@@ -346,8 +363,7 @@ pub fn chat_start(
 ) -> Result<(), ChatError> {
     let endpoint = validate_request(&request)?;
     let api_key = get_secret(&app, PROVIDER_ID)
-        .map_err(|error| ChatError::new("secret_store_error", error, false))?
-        .ok_or_else(|| ChatError::new("missing_api_key", "尚未保存 API key", false))?;
+        .map_err(|error| ChatError::new("secret_store_error", error, false))?;
     let mut active = manager
         .active
         .lock()
@@ -432,11 +448,13 @@ mod tests {
 
     #[test]
     fn endpoint_requires_https_except_localhost() {
-        assert!(validate_endpoint("https://api.example.com/v1/chat/completions").is_ok());
-        assert!(validate_endpoint("http://localhost:11434/v1/chat/completions").is_ok());
-        assert!(validate_endpoint("http://127.0.0.1:8080/chat").is_ok());
-        assert!(validate_endpoint("http://example.com/chat").is_err());
-        assert!(validate_endpoint("not a url").is_err());
+        assert!(validate_endpoint("https://api.example.com/v1/chat/completions", false).is_ok());
+        assert!(validate_endpoint("http://localhost:11434/v1/chat/completions", false).is_ok());
+        assert!(validate_endpoint("http://127.0.0.1:8080/chat", false).is_ok());
+        assert!(validate_endpoint("http://26.70.113.57:11434/v1/chat/completions", false).is_err());
+        assert!(validate_endpoint("http://26.70.113.57:11434/v1/chat/completions", true).is_ok());
+        assert!(validate_endpoint("ftp://example.com/chat", true).is_err());
+        assert!(validate_endpoint("not a url", true).is_err());
     }
 
     #[test]
