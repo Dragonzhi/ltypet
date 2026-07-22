@@ -1,24 +1,31 @@
+/* 底部时间轴：分层表面 + 柔和网格线 + 菱形关键帧 + 发光播放头 */
+
 .bottom-editor {
   grid-column: 1 / -1;
   grid-row: 3;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border-top: 1px solid #304668;
-  background: #121e32;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
 }
 
 .playback-bar {
   height: 42px;
-  padding: 6px 10px;
-  border-bottom: 1px solid #304668;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.playback-bar > span {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .empty-timeline {
   display: grid;
   place-items: center;
   height: 100%;
-  color: #8190a6;
+  color: var(--text-muted);
 }
 
 .timeline-panel {
@@ -31,30 +38,39 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  height: 32px;
-  padding: 4px 10px;
-  color: #9fb0c6;
+  height: 34px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.timeline-toolbar strong {
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .timeline-toolbar label {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-left: auto;
 }
+
+/* 效率工具条：浮起表面与上下内容分隔 */
 
 .timeline-tools {
   display: flex;
   align-items: center;
   gap: 6px;
   min-height: 40px;
-  padding: 5px 10px;
+  padding: 6px 12px;
   overflow: auto hidden;
-  border-top: 1px solid #273a57;
-  border-bottom: 1px solid #304668;
-  color: #9fb0c6;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--text-secondary);
   white-space: nowrap;
-  background: #15243a;
+  background: var(--bg-raised);
 }
 
 .timeline-tools label {
@@ -75,8 +91,8 @@
 .timeline-tool-separator {
   align-self: stretch;
   width: 1px;
-  margin: 0 3px;
-  background: #354b69;
+  margin: 0 4px;
+  background: var(--border-default);
 }
 
 .timeline-grid {
@@ -90,8 +106,8 @@
 .timeline-labels {
   z-index: 2;
   overflow: hidden auto;
-  border-right: 1px solid #304668;
-  background: #17263d;
+  border-right: 1px solid var(--border-subtle);
+  background: #1d1f24;
 }
 
 .timeline-ruler-label,
@@ -99,7 +115,7 @@
 .frame-ruler,
 .track-row {
   height: 25px;
-  border-bottom: 1px solid #273a57;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .timeline-ruler-label,
@@ -109,18 +125,25 @@
   padding: 0 8px;
 }
 
+.timeline-ruler-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .track-label.part {
-  color: #d4e3f5;
-  background: #1b2d49;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: rgb(255 255 255 / 3%);
 }
 
 .track-label.part.selected {
-  box-shadow: inset 3px 0 #66b5ff;
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 var(--accent);
 }
 
 .track-label.property {
   padding-left: 24px;
-  color: #8398b5;
+  color: var(--text-muted);
   font-size: 11px;
 }
 
@@ -129,6 +152,8 @@
   overflow: auto;
 }
 
+/* 帧网格：每帧一条极淡竖线 */
+
 .timeline-content {
   position: relative;
   min-height: 100%;
@@ -136,8 +161,8 @@
     to right,
     transparent 0,
     transparent 7px,
-    rgb(84 111 148 / 17%) 7px,
-    rgb(84 111 148 / 17%) 8px
+    rgb(255 255 255 / 5%) 7px,
+    rgb(255 255 255 / 5%) 8px
   );
 }
 
@@ -146,10 +171,12 @@
   z-index: 1;
   top: 0;
   bottom: 0;
-  border-inline: 1px solid rgb(101 195 225 / 75%);
-  background: rgb(61 147 183 / 9%);
+  border-inline: 1px solid rgb(79 140 255 / 50%);
+  background: rgb(79 140 255 / 9%);
   pointer-events: none;
 }
+
+/* 帧标尺是 button 元素，需要抹平基础按钮样式 */
 
 .frame-ruler {
   position: relative;
@@ -157,16 +184,24 @@
   width: 100%;
   padding: 0;
   border: 0;
+  border-bottom: 1px solid var(--border-subtle);
   border-radius: 0;
-  background: #192b46;
+  background: #1d1f24;
+  box-shadow: none;
   cursor: ew-resize;
+}
+
+.frame-ruler:hover:not(:disabled) {
+  border-color: var(--border-subtle);
+  background: #1d1f24;
 }
 
 .ruler-tick {
   position: absolute;
   top: 3px;
-  color: #8299b8;
+  color: var(--text-muted);
   font-size: 10px;
+  font-variant-numeric: tabular-nums;
   transform: translateX(2px);
 }
 
@@ -175,12 +210,14 @@
 }
 
 .part-track {
-  background: rgb(36 59 91 / 55%);
+  background: rgb(255 255 255 / 3%);
 }
 
 .property-track {
-  background: rgb(17 28 47 / 45%);
+  background: rgb(0 0 0 / 12%);
 }
+
+/* 菱形关键帧：强调蓝 + 白描边；选中为琥珀色光晕 */
 
 .keyframe-marker {
   position: absolute;
@@ -190,18 +227,30 @@
   min-height: 13px;
   height: 13px;
   padding: 0;
-  border: 1px solid #d9efff;
+  border: 1px solid rgb(255 255 255 / 85%);
   border-radius: 1px;
-  background: #4c9ce1;
+  background: var(--accent);
+  box-shadow: var(--shadow-sm);
   transform: translateX(-50%) rotate(45deg);
   touch-action: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
 }
 
-.keyframe-marker.selected {
+.keyframe-marker:hover:not(:disabled) {
   border-color: #fff;
-  background: #ffb84d;
-  box-shadow: 0 0 0 2px rgb(255 184 77 / 30%);
+  background: var(--accent-hover);
 }
+
+.keyframe-marker.selected,
+.keyframe-marker.selected:hover:not(:disabled) {
+  border-color: #fff;
+  background: #f0b45c;
+  box-shadow: 0 0 0 3px rgb(240 180 92 / 28%);
+}
+
+/* 属性关键帧：小圆点；离散通道用紫色方块 */
 
 .property-key {
   position: absolute;
@@ -209,14 +258,16 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #5da9e9;
+  background: var(--accent);
   transform: translateX(-50%);
 }
 
 .property-key.discrete {
   border-radius: 1px;
-  background: #b183e2;
+  background: var(--purple);
 }
+
+/* 播放头：珊瑚红细线 + 帧号标签 */
 
 .playhead {
   position: absolute;
@@ -224,7 +275,8 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: #ff5d72;
+  background: #f2556c;
+  box-shadow: 0 0 6px rgb(242 85 108 / 40%);
   pointer-events: none;
 }
 
@@ -232,24 +284,31 @@
   position: sticky;
   top: 0;
   display: inline-block;
-  padding: 1px 4px;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
   color: #fff;
-  background: #d44158;
+  background: #d84a5f;
+  box-shadow: var(--shadow-sm);
   transform: translateX(-50%);
 }
 
+/* 片段诊断条：计数胶囊 + 分级文字 */
+
 .clip-diagnostics {
   max-height: 92px;
-  padding: 6px 10px;
+  padding: 8px 12px;
   overflow: auto;
-  border-top: 1px solid #304668;
-  background: #142137;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
 }
 
 .clip-diagnostics-heading {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  color: var(--text-secondary);
 }
 
 .clip-diagnostic-counts {
@@ -260,12 +319,12 @@
 }
 
 .clip-diagnostic-counts span {
-  padding: 1px 5px;
-  border: 1px solid #385271;
-  border-radius: 8px;
-  color: #a9bdd7;
+  padding: 2px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  color: var(--text-secondary);
   font-size: 10px;
-  background: #192b46;
+  background: rgb(255 255 255 / 4%);
 }
 
 .clip-diagnostics ul {

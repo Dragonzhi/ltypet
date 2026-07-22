@@ -1,34 +1,49 @@
+/* 属性检查器：字段组卡片化，日志与诊断信息分级配色 */
+
 .inspector fieldset {
   display: grid;
-  gap: 5px;
+  gap: 6px;
   margin: 9px 0;
-  padding: 8px;
-  border: 1px solid #354d70;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 2%);
 }
 
 .inspector legend {
-  color: #88bfe9;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
 }
 
 .field-row {
   display: grid;
   grid-template-columns: 80px minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.field-row input {
+  color: var(--text-primary);
 }
 
 .selection-caption {
-  color: #a9bdd7;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
+/* 插入模式提示：与恢复横幅同族的琥珀色软提示 */
 .insert-notice {
   display: grid;
   gap: 6px;
-  padding: 7px;
-  border: 1px solid #80612d;
-  border-radius: 4px;
-  color: #ffd08a;
-  background: #352a18;
+  padding: 8px 10px;
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-md);
+  color: var(--warning-text);
+  background: var(--warning-soft);
 }
 
 .rig-inspector .selection-caption {
@@ -39,7 +54,7 @@
 
 .rig-reparent-hint {
   margin: 1px 0 3px;
-  color: #91a8c4;
+  color: var(--text-muted);
   font-size: 11px;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -51,22 +66,28 @@
 }
 
 .diag-error {
-  color: #ff8396;
+  color: var(--danger-text);
 }
 
 .diag-warn {
-  color: #ffc66d;
+  color: var(--warning-text);
 }
 
 .diag-info {
-  color: #7cc1ff;
+  color: var(--info);
 }
+
+/* 日志：凹陷等宽字体区域 */
 
 .log {
   max-height: 220px;
   margin: 0;
+  padding: 8px 10px;
   overflow: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   white-space: pre-wrap;
-  color: #9fb0c6;
-  font: 11px/1.45 "Cascadia Code", Consolas, monospace;
+  color: var(--text-secondary);
+  background: var(--bg-inset);
+  font: 11px/1.5 "Cascadia Code", Consolas, monospace;
 }

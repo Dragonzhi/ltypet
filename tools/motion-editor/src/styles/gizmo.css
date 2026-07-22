@@ -1,3 +1,5 @@
+/* 变换 gizmo：强调色描边 + 白色握柄描边，带投影保证在任意素材上可读 */
+
 .transform-gizmo {
   position: absolute;
   z-index: 15;
@@ -7,8 +9,8 @@
 
 .gizmo-bounds {
   position: absolute;
-  border: 1px solid #67b8ff;
-  background: rgb(78 165 239 / 5%);
+  border: 1px solid var(--accent);
+  background: rgb(79 140 255 / 7%);
   cursor: move;
   pointer-events: auto;
   touch-action: none;
@@ -21,7 +23,8 @@
   height: 13px;
   border: 2px solid #fff;
   border-radius: 50%;
-  background: #f15d76;
+  background: #f2556c;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 45%);
   transform: translate(-50%, -50%);
   cursor: crosshair;
   pointer-events: auto;
@@ -32,7 +35,7 @@
   position: absolute;
   width: 1px;
   height: 42px;
-  border-left: 1px dashed #8fcaff;
+  border-left: 1px dashed rgb(107 158 255 / 75%);
   transform: translateY(-42px);
 }
 
@@ -44,10 +47,17 @@
   height: 14px;
   padding: 0;
   border: 2px solid #fff;
-  background: #438dd2;
+  background: var(--accent);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 45%);
   transform: translate(-50%, -50%);
   pointer-events: auto;
   touch-action: none;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.gizmo-handle:hover:not(:disabled) {
+  border-color: #fff;
+  background: var(--accent-hover);
 }
 
 .gizmo-handle.rotate {
