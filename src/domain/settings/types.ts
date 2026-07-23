@@ -8,7 +8,7 @@
  */
 
 /** 当前设置结构版本号 */
-export const CURRENT_SCHEMA_VERSION = 6 as const;
+export const CURRENT_SCHEMA_VERSION = 7 as const;
 
 /** 窗口位置与外观状态 */
 export interface WindowSettings {
@@ -58,6 +58,20 @@ export interface AgentSettings {
   allowInsecureHttp: boolean;
 }
 
+/** M14 本地系统语音与朗读偏好。 */
+export interface SpeechSettings {
+  /** 是否允许 speech.say 和回复朗读。 */
+  enabled: boolean;
+  /** 对话完成后是否自动朗读最终回复。 */
+  autoReadReplies: boolean;
+  /** 系统语音速率，范围 [0.5, 2]。 */
+  rate: number;
+  /** 系统语音音高，范围 [0.5, 2]。 */
+  pitch: number;
+  /** Web Speech voiceURI；空字符串表示系统默认。 */
+  voiceUri: string;
+}
+
 /** 番茄钟时长与完成提醒偏好。 */
 export interface PomodoroSettings {
   /** 默认专注时长（分钟），范围 [1, 180]。 */
@@ -94,6 +108,7 @@ export interface PetSettings {
   window: WindowSettings;
   animation: AnimationSettings;
   audio: AudioSettings;
+  speech: SpeechSettings;
   agent: AgentSettings;
   pomodoro: PomodoroSettings;
   observation: ObservationSettings;

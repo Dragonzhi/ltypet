@@ -9,6 +9,7 @@ export type AgentToolName =
   | "pet_set_expression"
   | "pet_set_look"
   | "pet_move_window"
+  | "pet_say"
   | "timer_start"
   | "timer_pause"
   | "timer_resume"

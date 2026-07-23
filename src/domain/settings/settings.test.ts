@@ -47,6 +47,17 @@ describe("settings domain", () => {
       expect(settings.agent.allowInsecureHttp).toBe(false);
     });
 
+    it("本地语音和自动朗读默认关闭", () => {
+      const settings = createDefaultSettings();
+      expect(settings.speech).toEqual({
+        enabled: false,
+        autoReadReplies: false,
+        rate: 1,
+        pitch: 1,
+        voiceUri: "",
+      });
+    });
+
     it("番茄钟默认使用 25 分钟专注和 5 分钟休息", () => {
       const settings = createDefaultSettings();
       expect(settings.pomodoro).toEqual({
@@ -252,12 +263,13 @@ describe("settings domain", () => {
         schemaVersion: 1,
         window: { x: 100, y: 200, alwaysOnTop: false },
       });
-      expect(settings.schemaVersion).toBe(6);
+      expect(settings.schemaVersion).toBe(7);
       expect(settings.window.alwaysOnTop).toBe(false);
       expect(settings.pomodoro.focusMinutes).toBe(25);
       expect(settings.agent.provider).toBe("mock");
       expect(settings.agent.maxContextChars).toBe(24_000);
       expect(settings.observation.enabled).toBe(false);
+      expect(settings.speech.enabled).toBe(false);
     });
 
     it("拒绝超出范围的对话超时和重试设置", () => {
@@ -288,6 +300,18 @@ describe("settings domain", () => {
         observation: { ...settings.observation, musicReactionIntensity: 1.01 },
       });
       expect(result).toMatchObject({ ok: false, code: "invalid_structure" });
+    });
+
+    it("拒绝越界的语速和音高", () => {
+      const settings = createDefaultSettings();
+      expect(parseSettings({
+        ...settings,
+        speech: { ...settings.speech, rate: 2.01 },
+      }).ok).toBe(false);
+      expect(parseSettings({
+        ...settings,
+        speech: { ...settings.speech, pitch: 0.49 },
+      }).ok).toBe(false);
     });
   });
 

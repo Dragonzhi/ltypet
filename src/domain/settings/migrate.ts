@@ -53,6 +53,10 @@ function mergeWithDefaults(obj: Record<string, unknown>): PetSettings {
     ? obj.agent as Record<string, unknown>
     : {};
 
+  const speech = typeof obj.speech === "object" && obj.speech !== null
+    ? obj.speech as Record<string, unknown>
+    : {};
+
   const pomodoro = typeof obj.pomodoro === "object" && obj.pomodoro !== null
     ? obj.pomodoro as Record<string, unknown>
     : {};
@@ -94,6 +98,15 @@ function mergeWithDefaults(obj: Record<string, unknown>): PetSettings {
       allowInsecureHttp: typeof agent.allowInsecureHttp === "boolean"
         ? agent.allowInsecureHttp
         : defaults.agent.allowInsecureHttp,
+    },
+    speech: {
+      enabled: typeof speech.enabled === "boolean" ? speech.enabled : defaults.speech.enabled,
+      autoReadReplies: typeof speech.autoReadReplies === "boolean"
+        ? speech.autoReadReplies
+        : defaults.speech.autoReadReplies,
+      rate: typeof speech.rate === "number" ? speech.rate : defaults.speech.rate,
+      pitch: typeof speech.pitch === "number" ? speech.pitch : defaults.speech.pitch,
+      voiceUri: typeof speech.voiceUri === "string" ? speech.voiceUri : defaults.speech.voiceUri,
     },
     pomodoro: {
       focusMinutes: typeof pomodoro.focusMinutes === "number" ? pomodoro.focusMinutes : defaults.pomodoro.focusMinutes,

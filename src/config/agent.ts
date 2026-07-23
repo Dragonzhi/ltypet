@@ -17,6 +17,7 @@ export const AGENT_LIMITS: AgentLimits = {
     "expression.set": 1_000,
     "look.set": 500,
     "window.move": 15_000,
+    "speech.say": 1_000,
     "timer.start": 2_000,
     "timer.pause": 1_000,
     "timer.resume": 1_000,

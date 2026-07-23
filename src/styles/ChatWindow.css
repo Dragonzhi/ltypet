@@ -19,6 +19,7 @@ button, textarea { font: inherit; }
 .chat-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 12px; }
 .chat-header h1 { margin: 0; font-size: 20px; }
 .chat-header p { margin: 4px 0 0; color: #63807c; font-size: 12px; }
+.chat-header-actions { display: flex; align-items: center; gap: 8px; }
 .agent-state { display: inline-flex; margin-top: 6px; padding: 2px 8px; border-radius: 999px; background: #e5eceb; color: #6f8582; font-size: 11px; }
 .agent-state.enabled { background: #d7f3ed; color: #26756c; }
 .chat-secondary { border: 1px solid #b7d8d3; background: #fff; color: #256c64; border-radius: 8px; padding: 7px 12px; cursor: pointer; }

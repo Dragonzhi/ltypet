@@ -29,6 +29,9 @@ export interface CharacterRenderer {
   setExpression(name: string, options?: ExpressionOptions): Promise<void>;
   equipOutfit(outfitId: string): Promise<void>;
   setMediaReaction(state: "playing" | "paused" | "stopped"): void;
+  /** 可选的连续口型能力；不支持时执行器会回退到 speak 表情。 */
+  setSpeechState?(speaking: boolean): void;
+  setMouthOpen?(amount: number): void;
   reset(reason: ResetReason): void;
   dispose(): void;
 }
@@ -47,6 +50,43 @@ export interface WindowController {
   getPosition(): Promise<{ x: number; y: number }>;
   setAlwaysOnTop(value: boolean): Promise<void>;
   center(): Promise<void>;
+  dispose(): void;
+}
+
+export interface SpeechConfiguration {
+  enabled: boolean;
+  volume: number;
+  rate: number;
+  pitch: number;
+  voiceUri: string;
+  reducedMotion: boolean;
+}
+
+export interface SpeechVoice {
+  id: string;
+  name: string;
+  language: string;
+  local: boolean;
+}
+
+export interface SpeechSayOptions {
+  onMouthLevel?: (amount: number) => void;
+}
+
+export interface SpeechCacheStatus {
+  entries: number;
+  bytes: number;
+  policy: "none";
+}
+
+/** TTS 适配边界；实现不得向调用方暴露具体浏览器或原生引擎对象。 */
+export interface SpeechController {
+  isAvailable(): boolean;
+  configure(configuration: SpeechConfiguration): void;
+  getVoices(): SpeechVoice[];
+  say(text: string, options?: SpeechSayOptions): Promise<void>;
+  stop(): void;
+  getCacheStatus(): SpeechCacheStatus;
   dispose(): void;
 }
 

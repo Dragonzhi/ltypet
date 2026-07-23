@@ -25,9 +25,16 @@ const ALLOWED_ACTIONS = new Set<ActionRequest["type"]>([
   "timer.pause",
   "timer.resume",
   "timer.cancel",
+  "speech.say",
 ]);
 
-export default function AgentRuntimeBridge({ enabled }: { enabled: boolean }) {
+export default function AgentRuntimeBridge({
+  enabled,
+  speechEnabled,
+}: {
+  enabled: boolean;
+  speechEnabled: boolean;
+}) {
   const runtime = usePetRuntime();
   const enabledRef = useRef(enabled);
   const capabilitiesRef = useRef(runtime.capabilities);
@@ -44,9 +51,9 @@ export default function AgentRuntimeBridge({ enabled }: { enabled: boolean }) {
 
   useEffect(() => {
     capabilitiesRef.current = runtime.capabilities;
-    void emitTo("chat", "agent-capabilities-changed", createCapabilitySnapshot(runtime.capabilities))
+    void emitTo("chat", "agent-capabilities-changed", createCapabilitySnapshot(runtime.capabilities, speechEnabled))
       .catch(() => undefined);
-  }, [runtime.capabilities]);
+  }, [runtime.capabilities, speechEnabled]);
 
   useEffect(() => {
     let active = true;
@@ -55,7 +62,7 @@ export default function AgentRuntimeBridge({ enabled }: { enabled: boolean }) {
       cleanups.push(await listen<AgentCapabilityRequest>("agent-capabilities-request", (event) => {
         void emitTo("chat", "agent-capabilities-result", {
           requestId: event.payload.requestId,
-          snapshot: createCapabilitySnapshot(capabilitiesRef.current),
+          snapshot: createCapabilitySnapshot(capabilitiesRef.current, speechEnabled),
         }).catch(() => undefined);
       }));
       cleanups.push(await listen<AgentDispatchRequest>("agent-action-request", (event) => {
@@ -99,7 +106,7 @@ export default function AgentRuntimeBridge({ enabled }: { enabled: boolean }) {
           renderer: capabilitiesRef.current,
           window: true,
           timer: true,
-          speech: false,
+          speech: speechEnabled,
         },
       });
       if (!validation.ok) {
@@ -142,12 +149,15 @@ export default function AgentRuntimeBridge({ enabled }: { enabled: boolean }) {
       for (const actionId of requestsRef.current.values()) runtime.scheduler.cancel(actionId);
       requestsRef.current.clear();
     };
-  }, [runtime.scheduler]);
+  }, [runtime.scheduler, speechEnabled]);
 
   return null;
 }
 
-function createCapabilitySnapshot(renderer: RendererCapabilities): AgentCapabilitySnapshot {
+function createCapabilitySnapshot(
+  renderer: RendererCapabilities,
+  speechEnabled: boolean,
+): AgentCapabilitySnapshot {
   return {
     protocolVersion: AGENT_TOOL_PROTOCOL_VERSION,
     capturedAt: Date.now(),
@@ -160,7 +170,7 @@ function createCapabilitySnapshot(renderer: RendererCapabilities): AgentCapabili
       },
       window: true,
       timer: true,
-      speech: false,
+      speech: speechEnabled,
     },
   };
 }

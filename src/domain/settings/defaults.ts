@@ -34,6 +34,13 @@ export function createDefaultSettings(): PetSettings {
       externalDataConsent: false,
       allowInsecureHttp: false,
     },
+    speech: {
+      enabled: false,
+      autoReadReplies: false,
+      rate: 1,
+      pitch: 1,
+      voiceUri: "",
+    },
     pomodoro: {
       focusMinutes: 25,
       breakMinutes: 5,

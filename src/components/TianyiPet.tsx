@@ -24,6 +24,7 @@ import type { ActionRequest } from "../domain/actions/types";
 import AgentRuntimeBridge from "./AgentRuntimeBridge";
 import ObservationRuntimeBridge from "./ObservationRuntimeBridge";
 import { PET_ANIMATION_CONFIG } from "../config/petAnimation";
+import SpeechRuntimeBridge from "./SpeechRuntimeBridge";
 
 // 天依的核心动画状态
 type PetState = "idle" | "blink" | "listen" | "speak" | "sleep" | "drag";
@@ -91,7 +92,7 @@ const TianyiPetInnerContent = ({
   const hasDragged = useRef(false);
   const restoreStateTimer = useRef<number | undefined>(undefined);
 
-  const { scheduler, renderer } = usePetRuntime();
+  const { scheduler, renderer, speechController } = usePetRuntime();
   const { settings, updateWindowPosition } = useSettings();
   const musicConfig = PET_ANIMATION_CONFIG.musicReaction;
   const musicIntensity = settings?.observation.musicReactionIntensity
@@ -291,7 +292,19 @@ const TianyiPetInnerContent = ({
 
   return (
     <>
-    <AgentRuntimeBridge enabled={settings?.agent.enabled ?? false} />
+    <SpeechRuntimeBridge
+      speech={settings?.speech ?? null}
+      audio={settings?.audio ?? null}
+    />
+    <AgentRuntimeBridge
+      enabled={settings?.agent.enabled ?? false}
+      speechEnabled={Boolean(
+        settings?.speech.enabled
+        && settings.audio.enabled
+        && settings.audio.volume > 0
+        && speechController.isAvailable(),
+      )}
+    />
     <ObservationRuntimeBridge settings={settings?.observation ?? null} />
     <div
       ref={petElement}

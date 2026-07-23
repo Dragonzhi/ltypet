@@ -15,7 +15,7 @@ const SNAPSHOT: AgentCapabilitySnapshot = {
     },
     window: true,
     timer: true,
-    speech: false,
+    speech: true,
   },
 };
 
@@ -37,6 +37,7 @@ describe("M12 agent tools", () => {
     const definitions = createAgentToolDefinitions(SNAPSHOT);
     expect(definitions.map((tool) => tool.function.name)).toEqual([
       "pet_play_motion", "pet_set_expression", "pet_set_look", "pet_move_window",
+      "pet_say",
       "timer_start", "timer_pause", "timer_resume", "timer_cancel",
     ]);
     expect(JSON.stringify(definitions)).not.toMatch(/shell|javascript|tauri|selector/i);
@@ -67,7 +68,7 @@ describe("M12 agent tools", () => {
         timer: false,
       },
     });
-    expect(definitions.map((tool) => tool.function.name)).toEqual(["pet_move_window"]);
+    expect(definitions.map((tool) => tool.function.name)).toEqual(["pet_move_window", "pet_say"]);
   });
 
   it("maps a tool call into a validated agent ActionRequest", () => {
@@ -78,6 +79,16 @@ describe("M12 agent tools", () => {
     expect(result).toMatchObject({
       ok: true,
       action: { id: "a1", type: "window.move", source: "agent", correlationId: "c1" },
+    });
+  });
+
+  it("maps local speech without exposing provider details", () => {
+    expect(mapToolCallToAction(
+      call("pet_say", { text: "你好呀", interrupt: true }),
+      mappingOptions(),
+    )).toMatchObject({
+      ok: true,
+      action: { type: "speech.say", payload: { text: "你好呀", interrupt: true } },
     });
   });
 

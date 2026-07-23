@@ -44,7 +44,11 @@ export type ActionErrorCode =
   | "timer_conflict"
   | "timer_not_found"
   | "timer_invalid_state"
-  | "timer_native_error";
+  | "timer_native_error"
+  | "speech_disabled"
+  | "speech_unavailable"
+  | "speech_cancelled"
+  | "speech_failed";
 
 // --- Window target (used by window.move payload) ---
 export type WindowSemanticPosition =

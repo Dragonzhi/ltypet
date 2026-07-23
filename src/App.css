@@ -34,6 +34,12 @@
   initial-value: 0;
 }
 
+@property --mouth-open-level {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
 html,
 body,
 #root {
@@ -50,6 +56,7 @@ body,
   --brow-y: 0px;
   --mouth-x: 0px;
   --mouth-y: 0px;
+  --mouth-open-level: 0;
   --rouge-x: 0px;
   --rouge-y: 0px;
   --head-x: 0px;
@@ -105,6 +112,15 @@ body,
   --music-tail-target: var(--music-config-tail-target);
   --music-ear-target: var(--music-config-ear-target);
   --music-particle-opacity: var(--music-config-particle-opacity);
+}
+
+/* 说话时只降低角色自身的音乐律动，不控制或改变系统播放器。 */
+.pet-shell[data-media-playback="playing"][data-speaking="true"] {
+  --music-bob-target: calc(0.35 * var(--music-config-bob-target));
+  --music-tilt-target: calc(0.35 * var(--music-config-tilt-target));
+  --music-tail-target: calc(0.55 * var(--music-config-tail-target));
+  --music-ear-target: calc(0.55 * var(--music-config-ear-target));
+  --music-particle-opacity: 0;
 }
 
 .pet-shell::before,
@@ -270,6 +286,22 @@ body,
   transform-origin: center bottom;
 }
 
+.tianyi-artwork #mouth-closed,
+.tianyi-artwork #mouth-open {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.pet-shell[data-speaking="true"] .tianyi-artwork #mouth-closed {
+  opacity: calc(1 - var(--mouth-open-level));
+}
+
+.pet-shell[data-speaking="true"] .tianyi-artwork #mouth-open {
+  display: inline !important;
+  opacity: var(--mouth-open-level);
+  transform: scaleY(calc(0.3 + 0.7 * var(--mouth-open-level)));
+}
+
 .tianyi-artwork #ear-left,
 .tianyi-artwork #ear-right {
   transform-box: fill-box;
@@ -330,8 +362,13 @@ body,
   animation: pet-tie-sway 2.9s ease-in-out infinite;
 }
 
-.expression-speak #mouth {
-  animation: pet-mouth-talk 360ms ease-in-out infinite;
+.expression-speak #mouth-closed {
+  animation: pet-mouth-closed-talk 360ms ease-in-out infinite;
+}
+
+.expression-speak #mouth-open {
+  display: inline !important;
+  animation: pet-mouth-open-talk 360ms ease-in-out infinite;
 }
 
 @keyframes pet-breathe {
@@ -465,13 +502,25 @@ body,
   }
 }
 
-@keyframes pet-mouth-talk {
+@keyframes pet-mouth-closed-talk {
   0%,
   100% {
     opacity: 1;
   }
   50% {
-    opacity: 0.35;
+    opacity: 0;
+  }
+}
+
+@keyframes pet-mouth-open-talk {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scaleY(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
   }
 }
 
@@ -492,8 +541,19 @@ body,
   .pet-shell:not(.is-sleeping) #arm-left,
   .pet-shell:not(.is-sleeping) #arm-right-motion,
   .pet-shell:not(.is-sleeping) #tie,
-  .expression-speak #mouth {
+  .expression-speak #mouth-closed,
+  .expression-speak #mouth-open {
     animation: none;
+  }
+
+  .expression-speak #mouth-closed {
+    opacity: 0.52;
+  }
+
+  .expression-speak #mouth-open {
+    display: inline !important;
+    opacity: 0.48;
+    transform: scaleY(0.62);
   }
 
   .pet-shell,

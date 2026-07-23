@@ -4,6 +4,7 @@ import { PetActionExecutor } from "../domain/controllers/executor";
 import { SvgCharacterRenderer } from "../controllers/SvgCharacterRenderer";
 import { TauriWindowController } from "../controllers/TauriWindowController";
 import { TauriTimerController } from "../controllers/TauriTimerController";
+import { WebSpeechController } from "../controllers/WebSpeechController";
 import type { RendererCapabilities } from "../domain/capabilities/capabilities";
 import type { PetExpression } from "../components/TianyiArtwork";
 import { ObservationHost } from "../domain/observations/host";
@@ -15,6 +16,7 @@ export interface PetRuntime {
   renderer: SvgCharacterRenderer;
   windowController: TauriWindowController;
   timerController: TauriTimerController;
+  speechController: WebSpeechController;
   observationHost: ObservationHost;
   capabilities: RendererCapabilities;
 }
@@ -56,7 +58,13 @@ export function PetRuntimeProvider({
     });
     const windowController = new TauriWindowController();
     const timerController = new TauriTimerController();
-    const executor = new PetActionExecutor({ renderer, windowController, timerController });
+    const speechController = new WebSpeechController();
+    const executor = new PetActionExecutor({
+      renderer,
+      windowController,
+      timerController,
+      speechController,
+    });
     const scheduler = new BehaviorScheduler({ executor });
     const observationHost = new ObservationHost({
       scheduler,
@@ -74,6 +82,7 @@ export function PetRuntimeProvider({
       renderer,
       windowController,
       timerController,
+      speechController,
       observationHost,
       capabilities,
     };

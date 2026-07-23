@@ -1,17 +1,18 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type {
   PetSettings,
   WindowSettings,
   AnimationSettings,
   AudioSettings,
+  SpeechSettings,
   AgentSettings,
   PomodoroSettings,
   ObservationSettings,
 } from "../domain/settings/types";
-import type { TimerKind, TimerSnapshot } from "../domain/controllers/types";
+import type { SpeechVoice, TimerKind, TimerSnapshot } from "../domain/controllers/types";
 import { TauriTimerController } from "../controllers/TauriTimerController";
 import { parseSettings } from "../domain/settings/validate";
 import { createDefaultSettings } from "../domain/settings/defaults";
@@ -28,6 +29,7 @@ export default function SettingsWindow() {
   const [apiKeyDraft, setApiKeyDraft] = useState("");
   const [apiKeyPresent, setApiKeyPresent] = useState(false);
   const [apiKeyStatus, setApiKeyStatus] = useState<string | null>(null);
+  const [speechVoices, setSpeechVoices] = useState<SpeechVoice[]>([]);
 
   useEffect(() => {
     void (async () => {
@@ -47,6 +49,23 @@ export default function SettingsWindow() {
         setSettings(createDefaultSettings());
       }
     })();
+  }, []);
+
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+    const loadVoices = () => {
+      setSpeechVoices(window.speechSynthesis.getVoices()
+        .filter((voice) => voice.localService)
+        .map((voice) => ({
+          id: voice.voiceURI,
+          name: voice.name,
+          language: voice.lang,
+          local: voice.localService,
+        })));
+    };
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
   }, []);
 
   useEffect(() => {
@@ -133,6 +152,9 @@ export default function SettingsWindow() {
 
   const updateAudio = (partial: Partial<AudioSettings>) =>
     save({ ...settings, audio: { ...settings.audio, ...partial } });
+
+  const updateSpeech = (partial: Partial<SpeechSettings>) =>
+    save({ ...settings, speech: { ...settings.speech, ...partial } });
 
   const updateAgent = (partial: Partial<AgentSettings>) =>
     save({ ...settings, agent: { ...settings.agent, ...partial } });
@@ -271,6 +293,89 @@ export default function SettingsWindow() {
               {Math.round(settings.audio.volume * 100)}%
             </span>
           </Row>
+        </Section>
+
+        <Section title="本机语音与口型">
+          <Row label="启用语音朗读">
+            <input
+              type="checkbox"
+              checked={settings.speech.enabled}
+              onChange={(event) => updateSpeech({ enabled: event.target.checked })}
+              disabled={!settings.audio.enabled}
+            />
+          </Row>
+          <Row label="自动朗读模型回复">
+            <input
+              type="checkbox"
+              checked={settings.speech.autoReadReplies}
+              onChange={(event) => updateSpeech({ autoReadReplies: event.target.checked })}
+              disabled={!settings.audio.enabled || !settings.speech.enabled}
+            />
+          </Row>
+          <Row label="系统音色">
+            <select
+              value={settings.speech.voiceUri}
+              onChange={(event) => updateSpeech({ voiceUri: event.target.value })}
+              disabled={!settings.audio.enabled || !settings.speech.enabled}
+              style={wideInputStyle}
+            >
+              <option value="">系统默认本地音色</option>
+              {speechVoices.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.name}（{voice.language}）
+                </option>
+              ))}
+            </select>
+          </Row>
+          <Row label="语速">
+            <input
+              type="range"
+              min="0.5"
+              max="2"
+              step="0.05"
+              value={settings.speech.rate}
+              onChange={(event) => updateSpeech({ rate: Number(event.target.value) })}
+              disabled={!settings.audio.enabled || !settings.speech.enabled}
+              style={{ width: 160 }}
+            />
+            <span style={valueStyle}>{settings.speech.rate.toFixed(2)}×</span>
+          </Row>
+          <Row label="音高">
+            <input
+              type="range"
+              min="0.5"
+              max="2"
+              step="0.05"
+              value={settings.speech.pitch}
+              onChange={(event) => updateSpeech({ pitch: Number(event.target.value) })}
+              disabled={!settings.audio.enabled || !settings.speech.enabled}
+              style={{ width: 160 }}
+            />
+            <span style={valueStyle}>{settings.speech.pitch.toFixed(2)}×</span>
+          </Row>
+          <div style={timerActionsStyle}>
+            <button
+              type="button"
+              style={btnStyle}
+              disabled={!settings.audio.enabled || !settings.speech.enabled}
+              onClick={() => void emitTo("main", "speech-read-request", {
+                id: `settings-preview-${Date.now()}`,
+                text: "你好呀，我是小洛宝。现在的声音和口型感觉怎么样？",
+              })}
+            >
+              试听
+            </button>
+            <button
+              type="button"
+              style={btnStyle}
+              onClick={() => void emitTo("main", "speech-stop-request")}
+            >
+              停止朗读
+            </button>
+          </div>
+          <p style={hintStyle}>
+            使用 Windows WebView 提供的本地系统音色；应用不保存语音音频，也不配置或调用外部 TTS 接口。
+          </p>
         </Section>
 
         <Section title="番茄钟">

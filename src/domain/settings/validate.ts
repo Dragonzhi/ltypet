@@ -78,6 +78,20 @@ function validateRanges(settings: PetSettings): string | null {
     return "audio.volume 必须在 [0, 1] 范围内";
   }
 
+  if (!Number.isFinite(settings.speech.rate)
+    || settings.speech.rate < 0.5
+    || settings.speech.rate > 2) {
+    return "speech.rate 必须在 [0.5, 2] 范围内";
+  }
+  if (!Number.isFinite(settings.speech.pitch)
+    || settings.speech.pitch < 0.5
+    || settings.speech.pitch > 2) {
+    return "speech.pitch 必须在 [0.5, 2] 范围内";
+  }
+  if (settings.speech.voiceUri.length > 512) {
+    return "speech.voiceUri 不能超过 512 个字符";
+  }
+
   if (settings.agent.endpoint.length > 2048) {
     return "agent.endpoint 不能超过 2048 个字符";
   }

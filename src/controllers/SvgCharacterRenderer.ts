@@ -209,6 +209,22 @@ export class SvgCharacterRenderer implements CharacterRenderer {
     pet.dataset.mediaPlayback = state;
   }
 
+  setSpeechState(speaking: boolean): void {
+    if (this.disposed) return;
+    const pet = this.binding.element.current;
+    if (!pet) return;
+    pet.dataset.speaking = speaking ? "true" : "false";
+    if (!speaking) pet.style.setProperty("--mouth-open-level", "0");
+  }
+
+  setMouthOpen(amount: number): void {
+    if (this.disposed) return;
+    const pet = this.binding.element.current;
+    if (!pet) return;
+    const normalized = Number.isFinite(amount) ? Math.min(1, Math.max(0, amount)) : 0;
+    pet.style.setProperty("--mouth-open-level", normalized.toFixed(3));
+  }
+
   reset(_reason: ResetReason): void {
     this.player?.reset();
     if (this.currentExpressionTimer !== undefined) clearTimeout(this.currentExpressionTimer);
@@ -217,6 +233,8 @@ export class SvgCharacterRenderer implements CharacterRenderer {
     this.motionExpressionTimer = undefined;
     this.binding.onMotionExpressionChange?.(null);
     this.binding.onSuppressionChange?.(new Set());
+    this.setSpeechState(false);
+    this.setMouthOpen(0);
     this.setLookDirection(0, 0);
   }
 
@@ -227,7 +245,11 @@ export class SvgCharacterRenderer implements CharacterRenderer {
     if (this.currentExpressionTimer !== undefined) clearTimeout(this.currentExpressionTimer);
     if (this.motionExpressionTimer !== undefined) clearTimeout(this.motionExpressionTimer);
     const pet = this.binding.element.current;
-    if (pet) pet.dataset.mediaPlayback = "stopped";
+    if (pet) {
+      pet.dataset.mediaPlayback = "stopped";
+      pet.dataset.speaking = "false";
+      pet.style.setProperty("--mouth-open-level", "0");
+    }
     this.disposed = true;
   }
 }

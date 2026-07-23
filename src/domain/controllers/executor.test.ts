@@ -61,6 +61,12 @@ class FakeRenderer {
   setMediaReaction(state: "playing" | "paused" | "stopped"): void {
     this.calls.push({ method: "setMediaReaction", args: [state] });
   }
+  setSpeechState(speaking: boolean): void {
+    this.calls.push({ method: "setSpeechState", args: [speaking] });
+  }
+  setMouthOpen(amount: number): void {
+    this.calls.push({ method: "setMouthOpen", args: [amount] });
+  }
   completeOutfit() {
     this.outfitResolver?.();
     this.outfitResolver = null;
@@ -137,6 +143,22 @@ class FakeTimerController {
   }
   async onStateChange(_listener: (event: TimerStateEvent) => void) { return () => undefined; }
   async onFinished(_listener: (timer: TimerSnapshot) => void) { return () => undefined; }
+  dispose() { this.disposed = true; }
+}
+
+class FakeSpeechController {
+  calls: { method: string; args: unknown[] }[] = [];
+  disposed = false;
+
+  isAvailable() { return true; }
+  configure() { /* no-op */ }
+  getVoices() { return []; }
+  async say(text: string, options?: { onMouthLevel?: (amount: number) => void }) {
+    this.calls.push({ method: "say", args: [text] });
+    options?.onMouthLevel?.(0.65);
+  }
+  stop() { this.calls.push({ method: "stop", args: [] }); }
+  getCacheStatus() { return { entries: 0, bytes: 0, policy: "none" as const }; }
   dispose() { this.disposed = true; }
 }
 
@@ -479,6 +501,28 @@ describe("未实现的能力返回 rejected", () => {
     expect(result.status).toBe("rejected");
     expect(result.errorCode).toBe("renderer_unavailable");
     expect(result.actionId).toBe("test-u1");
+  });
+
+  it("speech.say 调用本机语音并在结束后关闭口型", async () => {
+    const renderer = new FakeRenderer();
+    const windowController = new FakeWindowController();
+    const speechController = new FakeSpeechController();
+    const executor = new PetActionExecutor({ renderer, windowController, speechController });
+
+    const result = await executor.execute(
+      makeAction("test-speech", "speech.say", { text: "你好" }),
+      new AbortController().signal,
+    );
+
+    expect(result.status).toBe("completed");
+    expect(speechController.calls).toContainEqual({ method: "say", args: ["你好"] });
+    expect(renderer.calls.filter((call) => call.method === "setSpeechState")).toEqual([
+      { method: "setSpeechState", args: [true] },
+      { method: "setSpeechState", args: [false] },
+    ]);
+    const mouthCalls = renderer.calls.filter((call) => call.method === "setMouthOpen");
+    expect(mouthCalls[mouthCalls.length - 1]).toEqual({ method: "setMouthOpen", args: [0] });
+    executor.dispose();
   });
 
   it("timer.start 返回 rejected 和 renderer_unavailable", async () => {

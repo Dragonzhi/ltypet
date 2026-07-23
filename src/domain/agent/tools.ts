@@ -106,6 +106,25 @@ const AGENT_TOOL_ADAPTERS: readonly AgentToolAdapter[] = [
     }),
   },
   {
+    name: "pet_say",
+    isAvailable: ({ speech }) => speech === true,
+    createDefinition: () => defineTool(
+      "pet_say",
+      "让小洛宝使用本机系统语音朗读一段简短文本，并同步驱动口型。不要重复朗读已经说过的同一句话。",
+      {
+        type: "object",
+        properties: {
+          text: { type: "string", minLength: 1, maxLength: 500 },
+          interrupt: { type: "boolean", default: false },
+        },
+        required: ["text"],
+        ...noExtraProperties,
+      },
+    ),
+    validateArguments: (args) => validateExactArguments(args, ["text", "interrupt"], ["text"]),
+    mapArguments: (args) => ({ type: "speech.say", payload: pick(args, ["text", "interrupt"]) }),
+  },
+  {
     name: "timer_start",
     isAvailable: ({ timer }) => timer === true,
     createDefinition: () => defineTool("timer_start", "启动一个本地可靠计时器。", {
@@ -179,6 +198,7 @@ export function createAgentToolDefinitions(snapshot: AgentCapabilitySnapshot): P
 export function describeAgentCapabilities(snapshot: AgentCapabilitySnapshot): string {
   const renderer = snapshot.capabilities.renderer;
   return [
+    `本机语音朗读：${snapshot.capabilities.speech ? "可用，可调用 pet_say" : "不可用"}。`,
     `动作 ID：${renderer?.motions.length ? describeValues(renderer.motions, MOTION_LABELS) : "无"}。`,
     `表情 ID：${renderer?.expressions.length ? describeValues(renderer.expressions, EXPRESSION_LABELS) : "无"}。`,
     "所有枚举参数必须逐字使用 schema 中的英文 ID；不要使用中文名、同义词或空对象。",

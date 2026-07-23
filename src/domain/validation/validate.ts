@@ -199,7 +199,11 @@ function validateOutfitEquip(
 function validateSpeechSay(
   payload: Record<string, unknown>,
 ): ValidationResult | null {
-  if (typeof payload.text !== "string" || payload.text.length === 0 || payload.text.length > 500) {
+  if (
+    typeof payload.text !== "string"
+    || payload.text.trim().length === 0
+    || Array.from(payload.text).length > 500
+  ) {
     return fail("invalid_payload", "text 必须是非空字符串且不超过 500 字符");
   }
   if ("interrupt" in payload && payload.interrupt !== undefined) {

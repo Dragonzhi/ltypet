@@ -1,11 +1,12 @@
 import type { ActionRequest, ActionResult } from "../actions/types";
 import type { ActionExecutor } from "../scheduler/types";
-import type { CharacterRenderer, TimerController, WindowController } from "./types";
+import type { CharacterRenderer, SpeechController, TimerController, WindowController } from "./types";
 
 export interface PetActionExecutorOptions {
   renderer: CharacterRenderer;
   windowController: WindowController;
   timerController?: TimerController;
+  speechController?: SpeechController;
   clock?: () => number;
 }
 
@@ -13,6 +14,7 @@ export class PetActionExecutor implements ActionExecutor {
   private renderer: CharacterRenderer;
   private windowController: WindowController;
   private timerController?: TimerController;
+  private speechController?: SpeechController;
   private clock: () => number;
   private disposed = false;
 
@@ -20,6 +22,7 @@ export class PetActionExecutor implements ActionExecutor {
     this.renderer = options.renderer;
     this.windowController = options.windowController;
     this.timerController = options.timerController;
+    this.speechController = options.speechController;
     this.clock = options.clock ?? (() => Date.now());
   }
 
@@ -131,8 +134,34 @@ export class PetActionExecutor implements ActionExecutor {
           this.renderer.setMediaReaction(action.payload.state);
           return { actionId: action.id, status: "completed", finishedAt: this.clock() };
         }
-        case "speech.say":
-          return { actionId: action.id, status: "rejected", errorCode: "renderer_unavailable", reason: "该能力尚未实现", finishedAt: this.clock() };
+        case "speech.say": {
+          if (!this.speechController || !this.speechController.isAvailable()) {
+            return {
+              actionId: action.id,
+              status: "rejected",
+              errorCode: "renderer_unavailable",
+              reason: "系统语音合成不可用",
+              finishedAt: this.clock(),
+            };
+          }
+          const hasContinuousMouth = Boolean(this.renderer.setSpeechState && this.renderer.setMouthOpen);
+          if (hasContinuousMouth) this.renderer.setSpeechState?.(true);
+          else await this.renderer.setExpression("speak");
+          try {
+            await this.withAbort(
+              () => this.speechController!.say(action.payload.text, {
+                onMouthLevel: (amount) => this.renderer.setMouthOpen?.(amount),
+              }),
+              signal,
+              () => this.speechController!.stop(),
+            );
+          } finally {
+            this.renderer.setMouthOpen?.(0);
+            if (hasContinuousMouth) this.renderer.setSpeechState?.(false);
+            else await this.renderer.setExpression("normal");
+          }
+          return { actionId: action.id, status: "completed", finishedAt: this.clock() };
+        }
         case "wait":
           return { actionId: action.id, status: "rejected", errorCode: "unsupported_action", reason: "wait 不应到达执行器", finishedAt: this.clock() };
       }
@@ -145,7 +174,8 @@ export class PetActionExecutor implements ActionExecutor {
         "code" in error &&
         (error.code === "unsupported_action" ||
           error.code === "renderer_unavailable" ||
-          String(error.code).startsWith("timer_"))
+          String(error.code).startsWith("timer_") ||
+          String(error.code).startsWith("speech_"))
       ) {
         return {
           actionId: action.id,
@@ -163,6 +193,7 @@ export class PetActionExecutor implements ActionExecutor {
     this.renderer.dispose();
     this.windowController.dispose();
     this.timerController?.dispose();
+    this.speechController?.dispose();
     this.disposed = true;
   }
 

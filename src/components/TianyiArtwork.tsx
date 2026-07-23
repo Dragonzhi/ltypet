@@ -42,6 +42,8 @@ const animatedLayerLabels = [
   "eye_left",
   "eye_right",
   "mouth",
+  "mouth_closed",
+  "mouth_open",
   "eyebrow_left",
   "eyebrow_right",
   "hair_front",

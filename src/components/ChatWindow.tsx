@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { emitTo, listen } from "@tauri-apps/api/event";
 import type { PetSettings } from "../domain/settings/types";
 import { parseSettings } from "../domain/settings/validate";
 import { createDefaultSettings } from "../domain/settings/defaults";
@@ -166,7 +166,10 @@ export default function ChatWindow() {
 
     try {
       const providerMessages = fitMessagesToBudget(nextMessages, settings.agent.maxContextChars);
+      let assistantText = "";
+      let spokeViaTool = false;
       const onDelta = (delta: string) => {
+        assistantText += delta;
         setMessages((current) => current.map((message) =>
           message.id === assistantId
             ? { ...message, content: message.content + delta }
@@ -185,6 +188,9 @@ export default function ChatWindow() {
             actionClientRef.current.dispatch(action, confirmed, signal),
           confirm: requestConfirmation,
           onToolExecution: (execution) => {
+            if (execution.toolCall.function.name === "pet_say" && execution.result.status === "completed") {
+              spokeViaTool = true;
+            }
             setToolExecutions((current) => [...current, execution]);
           },
         });
@@ -193,6 +199,20 @@ export default function ChatWindow() {
           { requestId, messages: providerMessages },
           { signal: controller.signal, onDelta },
         );
+      }
+      const spokenReply = truncateSpeechText(assistantText);
+      if (
+        spokenReply
+        && !spokeViaTool
+        && settings.speech.enabled
+        && settings.speech.autoReadReplies
+        && settings.audio.enabled
+        && settings.audio.volume > 0
+      ) {
+        void emitTo("main", "speech-read-request", {
+          id: `chat-speech-${assistantId}`,
+          text: spokenReply,
+        }).catch(() => undefined);
       }
     } catch (caught) {
       const providerError = caught instanceof ChatProviderError || caught instanceof AgentTurnError
@@ -256,7 +276,18 @@ export default function ChatWindow() {
               : "纯文本对话"}
           </span>
         </div>
-        <button type="button" className="chat-secondary" onClick={() => void invoke("open_settings")}>设置</button>
+        <div className="chat-header-actions">
+          {settings.speech.enabled && (
+            <button
+              type="button"
+              className="chat-secondary"
+              onClick={() => void emitTo("main", "speech-stop-request")}
+            >
+              停止朗读
+            </button>
+          )}
+          <button type="button" className="chat-secondary" onClick={() => void invoke("open_settings")}>设置</button>
+        </div>
       </header>
 
       <div className={isExternal ? "chat-disclosure external" : "chat-disclosure"} role="note">
@@ -358,6 +389,10 @@ function createId(prefix: string): string {
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return `${prefix}-${suffix}`;
+}
+
+function truncateSpeechText(text: string): string {
+  return Array.from(text.trim()).slice(0, 500).join("");
 }
 
 function requiresInsecureHttpOptIn(endpoint: string): boolean {

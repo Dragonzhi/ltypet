@@ -551,6 +551,25 @@ describe("字符串约束", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("speech.say 按 Unicode 字符计数并拒绝纯空白", () => {
+    expect(validateActionRequest({
+      protocolVersion: 1,
+      id: "speech-unicode",
+      type: "speech.say",
+      source: "dev",
+      requestedAt: 1000,
+      payload: { text: "😀".repeat(500) },
+    }).ok).toBe(true);
+    expect(validateActionRequest({
+      protocolVersion: 1,
+      id: "speech-blank",
+      type: "speech.say",
+      source: "dev",
+      requestedAt: 1000,
+      payload: { text: "   " },
+    }).ok).toBe(false);
+  });
+
   it("id 超过 128 字符被拒绝", () => {
     const result = validateActionRequest({
       protocolVersion: 1,

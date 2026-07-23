@@ -117,6 +117,7 @@ export function useSettings() {
           window: { ...base.window, ...partial.window },
           animation: { ...base.animation, ...partial.animation },
           audio: { ...base.audio, ...partial.audio },
+          speech: { ...base.speech, ...partial.speech },
           agent: { ...base.agent, ...partial.agent },
           pomodoro: { ...base.pomodoro, ...partial.pomodoro },
           observation: { ...base.observation, ...partial.observation },
