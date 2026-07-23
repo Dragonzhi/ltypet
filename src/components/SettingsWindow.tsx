@@ -11,6 +11,7 @@ import type {
   AgentSettings,
   PomodoroSettings,
   ObservationSettings,
+  MemorySettings,
 } from "../domain/settings/types";
 import type { SpeechVoice, TimerKind, TimerSnapshot } from "../domain/controllers/types";
 import { TauriTimerController } from "../controllers/TauriTimerController";
@@ -18,6 +19,7 @@ import { parseSettings } from "../domain/settings/validate";
 import { createDefaultSettings } from "../domain/settings/defaults";
 import { deleteApiKey, hasApiKey, setApiKey } from "../controllers/SecureKeyStore";
 import PluginSettingsPanel from "./PluginSettingsPanel";
+import MemorySettingsPanel from "./MemorySettingsPanel";
 
 export default function SettingsWindow() {
   const [settings, setSettings] = useState<PetSettings | null>(null);
@@ -164,6 +166,9 @@ export default function SettingsWindow() {
 
   const updateObservation = (partial: Partial<ObservationSettings>) =>
     save({ ...settings, observation: { ...settings.observation, ...partial } });
+
+  const updateMemory = (partial: Partial<MemorySettings>) =>
+    save({ ...settings, memory: { ...settings.memory, ...partial } });
 
   const runTimerCommand = async (
     command: () => Promise<TimerSnapshot>,
@@ -638,6 +643,10 @@ export default function SettingsWindow() {
 
         <Section title="创作者插件">
           <PluginSettingsPanel observationEnabled={settings.observation.enabled} />
+        </Section>
+
+        <Section title="长期记忆与羁绊">
+          <MemorySettingsPanel settings={settings.memory} onChange={updateMemory} />
         </Section>
 
         <Section title="行为控制">

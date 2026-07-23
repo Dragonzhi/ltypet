@@ -65,6 +65,10 @@ function mergeWithDefaults(obj: Record<string, unknown>): PetSettings {
     ? obj.observation as Record<string, unknown>
     : {};
 
+  const memory = typeof obj.memory === "object" && obj.memory !== null
+    ? obj.memory as Record<string, unknown>
+    : {};
+
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     window: {
@@ -134,6 +138,15 @@ function mergeWithDefaults(obj: Record<string, unknown>): PetSettings {
       quietHoursEndMinute: typeof observation.quietHoursEndMinute === "number"
         ? observation.quietHoursEndMinute
         : defaults.observation.quietHoursEndMinute,
+    },
+    memory: {
+      enabled: typeof memory.enabled === "boolean" ? memory.enabled : defaults.memory.enabled,
+      includeInModelContext: typeof memory.includeInModelContext === "boolean"
+        ? memory.includeInModelContext
+        : defaults.memory.includeInModelContext,
+      bondEnabled: typeof memory.bondEnabled === "boolean"
+        ? memory.bondEnabled
+        : defaults.memory.bondEnabled,
     },
   };
 }

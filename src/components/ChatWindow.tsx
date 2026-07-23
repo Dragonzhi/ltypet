@@ -18,6 +18,8 @@ import type { AgentCapabilitySnapshot, AgentToolExecution } from "../domain/agen
 import { TauriAgentActionClient } from "../controllers/TauriAgentActionClient";
 import { MockChatProvider } from "../providers/MockChatProvider";
 import { TauriOpenAICompatibleProvider } from "../providers/TauriOpenAICompatibleProvider";
+import { MemoryController } from "../controllers/MemoryController";
+import { buildMemoryContext } from "../domain/memory/types";
 import "../styles/ChatWindow.css";
 
 export default function ChatWindow() {
@@ -34,6 +36,8 @@ export default function ChatWindow() {
   const [toolExecutions, setToolExecutions] = useState<AgentToolExecution[]>([]);
   const [agentCapabilities, setAgentCapabilities] = useState<AgentCapabilitySnapshot | null>(null);
   const [capabilitySyncError, setCapabilitySyncError] = useState<string | null>(null);
+  const [memoryStatus, setMemoryStatus] = useState<string | null>(null);
+  const memoryControllerRef = useRef(new MemoryController());
 
   useEffect(() => {
     let active = true;
@@ -165,7 +169,27 @@ export default function ChatWindow() {
     setMessages([...nextMessages, { id: assistantId, role: "assistant", content: "" }]);
 
     try {
-      const providerMessages = fitMessagesToBudget(nextMessages, settings.agent.maxContextChars);
+      let memoryContext: string | null = null;
+      if (settings.memory.enabled && settings.memory.includeInModelContext) {
+        try {
+          const memory = await memoryControllerRef.current.getSnapshot();
+          memoryContext = buildMemoryContext(
+            memory.snapshot,
+            Math.min(3_000, Math.floor(settings.agent.maxContextChars * 0.25)),
+          );
+          setMemoryStatus(memoryContext ? `本轮使用 ${memory.snapshot.entries.length} 条明确保存的记忆` : "长期记忆已启用，但当前没有可用内容");
+        } catch (memoryError) {
+          setMemoryStatus(`长期记忆读取失败，本轮已按无记忆模式继续：${String(memoryError)}`);
+        }
+      } else {
+        setMemoryStatus(settings.memory.enabled ? "本轮未向模型提供长期记忆" : null);
+      }
+      const memoryChars = memoryContext ? Array.from(memoryContext).length : 0;
+      const providerMessages = fitMessagesToBudget(
+        nextMessages,
+        Math.max(1, settings.agent.maxContextChars - memoryChars),
+      );
+      if (memoryContext) providerMessages.unshift({ role: "system", content: memoryContext });
       let assistantText = "";
       let spokeViaTool = false;
       const onDelta = (delta: string) => {
@@ -213,6 +237,15 @@ export default function ChatWindow() {
           id: `chat-speech-${assistantId}`,
           text: spokenReply,
         }).catch(() => undefined);
+      }
+      if (settings.memory.enabled && settings.memory.bondEnabled) {
+        try {
+          const award = await memoryControllerRef.current.recordCompletedInteraction(requestId);
+          if (award.awarded > 0) setMemoryStatus(`羁绊 +${award.awarded}，当前 ${award.snapshot.bond.points}/100`);
+          else if (award.reason === "daily_limit") setMemoryStatus("本日羁绊奖励已达到 3 次上限");
+        } catch (memoryError) {
+          setMemoryStatus(`羁绊记录失败：${String(memoryError)}`);
+        }
       }
     } catch (caught) {
       const providerError = caught instanceof ChatProviderError || caught instanceof AgentTurnError
@@ -297,6 +330,7 @@ export default function ChatWindow() {
           ? "发送时会把当前输入及预算范围内的最近对话发送到配置的模型接口；不会附带窗口、屏幕、应用或其他系统感知数据。"
           : "当前使用离线 Mock Provider。输入仅在本窗口内存中处理，关闭窗口后不会保存会话。"}
       </div>
+      {memoryStatus && <div className="chat-disclosure" role="status">{memoryStatus}</div>}
 
       <div className="chat-messages" ref={listRef} aria-live="polite" aria-busy={runningRequestId !== null}>
         {messages.length === 0 && (

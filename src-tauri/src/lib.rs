@@ -1,12 +1,17 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod chat;
 mod media;
+mod memory;
 mod plugins;
 mod secrets;
 mod timer;
 
 use chat::{chat_cancel, chat_start, ChatManager};
 use media::{media_set_observation_enabled, MediaMonitor};
+use memory::{
+    memory_add_entry, memory_clear_all, memory_delete_entry, memory_export, memory_get_snapshot,
+    memory_record_interaction, memory_update_entry, MemoryManager,
+};
 use plugins::{
     plugin_inspect_manifest, plugin_install_inspected, plugin_list, plugin_set_enabled,
     plugin_uninstall, PluginHost,
@@ -516,6 +521,13 @@ pub fn run() {
             timer_cancel,
             timer_take_pending_finished,
             media_set_observation_enabled,
+            memory_get_snapshot,
+            memory_add_entry,
+            memory_update_entry,
+            memory_delete_entry,
+            memory_clear_all,
+            memory_record_interaction,
+            memory_export,
             plugin_inspect_manifest,
             plugin_install_inspected,
             plugin_list,
@@ -527,6 +539,15 @@ pub fn run() {
             app.manage(ChatManager::default());
             let app_handle = app.handle().clone();
             app.manage(MediaMonitor::start(app_handle.clone()));
+            match MemoryManager::load(&app_handle) {
+                Ok(memory_manager) => {
+                    app.manage(memory_manager);
+                }
+                Err(error) => {
+                    // 长期记忆是可选能力；存储初始化失败不能阻止桌宠、设置、聊天和退出路径。
+                    eprintln!("长期记忆已降级停用：{error}");
+                }
+            }
             match PluginHost::load(app_handle.clone()) {
                 Ok(plugin_host) => {
                     app.manage(plugin_host);

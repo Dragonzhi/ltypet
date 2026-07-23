@@ -80,6 +80,14 @@ describe("settings domain", () => {
         quietHoursEndMinute: 480,
       });
     });
+
+    it("长期记忆、模型注入和羁绊默认全部关闭", () => {
+      expect(createDefaultSettings().memory).toEqual({
+        enabled: false,
+        includeInModelContext: false,
+        bondEnabled: false,
+      });
+    });
   });
 
   describe("parseSettings — 合法输入", () => {
@@ -263,13 +271,14 @@ describe("settings domain", () => {
         schemaVersion: 1,
         window: { x: 100, y: 200, alwaysOnTop: false },
       });
-      expect(settings.schemaVersion).toBe(7);
+      expect(settings.schemaVersion).toBe(8);
       expect(settings.window.alwaysOnTop).toBe(false);
       expect(settings.pomodoro.focusMinutes).toBe(25);
       expect(settings.agent.provider).toBe("mock");
       expect(settings.agent.maxContextChars).toBe(24_000);
       expect(settings.observation.enabled).toBe(false);
       expect(settings.speech.enabled).toBe(false);
+      expect(settings.memory.enabled).toBe(false);
     });
 
     it("拒绝超出范围的对话超时和重试设置", () => {

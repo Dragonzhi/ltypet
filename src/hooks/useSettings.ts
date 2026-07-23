@@ -118,6 +118,7 @@ export function useSettings() {
           animation: { ...base.animation, ...partial.animation },
           audio: { ...base.audio, ...partial.audio },
           speech: { ...base.speech, ...partial.speech },
+          memory: { ...base.memory, ...partial.memory },
           agent: { ...base.agent, ...partial.agent },
           pomodoro: { ...base.pomodoro, ...partial.pomodoro },
           observation: { ...base.observation, ...partial.observation },

@@ -8,7 +8,7 @@
  */
 
 /** 当前设置结构版本号 */
-export const CURRENT_SCHEMA_VERSION = 7 as const;
+export const CURRENT_SCHEMA_VERSION = 8 as const;
 
 /** 窗口位置与外观状态 */
 export interface WindowSettings {
@@ -102,6 +102,16 @@ export interface ObservationSettings {
   quietHoursEndMinute: number;
 }
 
+/** M15 长期记忆和羁绊开关；数据本身保存在独立 memory.v1.json。 */
+export interface MemorySettings {
+  /** 无记忆模式总开关；关闭时既不读取上下文，也不累计羁绊。 */
+  enabled: boolean;
+  /** 是否把用户明确保存的记忆摘要加入模型上下文。 */
+  includeInModelContext: boolean;
+  /** 是否按固定规则记录成功对话并增加羁绊。 */
+  bondEnabled: boolean;
+}
+
 /** 完整的用户设置 */
 export interface PetSettings {
   schemaVersion: typeof CURRENT_SCHEMA_VERSION;
@@ -112,6 +122,7 @@ export interface PetSettings {
   agent: AgentSettings;
   pomodoro: PomodoroSettings;
   observation: ObservationSettings;
+  memory: MemorySettings;
 }
 
 /** 校验错误码 */

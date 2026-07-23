@@ -56,5 +56,10 @@ export function createDefaultSettings(): PetSettings {
       quietHoursStartMinute: 22 * 60,
       quietHoursEndMinute: 8 * 60,
     },
+    memory: {
+      enabled: false,
+      includeInModelContext: false,
+      bondEnabled: false,
+    },
   };
 }
