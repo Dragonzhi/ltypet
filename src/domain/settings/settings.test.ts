@@ -62,6 +62,7 @@ describe("settings domain", () => {
       expect(settings.observation).toEqual({
         enabled: false,
         systemMediaEnabled: false,
+        musicReactionIntensity: 0.55,
         diagnosticsEnabled: true,
         quietHoursEnabled: false,
         quietHoursStartMinute: 1_320,
@@ -251,7 +252,7 @@ describe("settings domain", () => {
         schemaVersion: 1,
         window: { x: 100, y: 200, alwaysOnTop: false },
       });
-      expect(settings.schemaVersion).toBe(5);
+      expect(settings.schemaVersion).toBe(6);
       expect(settings.window.alwaysOnTop).toBe(false);
       expect(settings.pomodoro.focusMinutes).toBe(25);
       expect(settings.agent.provider).toBe("mock");
@@ -276,6 +277,15 @@ describe("settings domain", () => {
       const result = parseSettings({
         ...settings,
         observation: { ...settings.observation, quietHoursStartMinute: 1_440 },
+      });
+      expect(result).toMatchObject({ ok: false, code: "invalid_structure" });
+    });
+
+    it("拒绝越界的系统音乐反应强度", () => {
+      const settings = createDefaultSettings();
+      const result = parseSettings({
+        ...settings,
+        observation: { ...settings.observation, musicReactionIntensity: 1.01 },
       });
       expect(result).toMatchObject({ ok: false, code: "invalid_structure" });
     });

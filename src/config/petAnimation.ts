@@ -99,4 +99,17 @@ export const PET_ANIMATION_CONFIG = {
     maxLiftPx: 0.25,
     maxRotateDeg: 3,
   },
+  /** M13-B 系统音乐状态驱动的低打扰视觉反应。 */
+  musicReaction: {
+    // 设置页默认强度；0 完全关闭视觉幅度，1 使用以下完整幅度。
+    defaultIntensity: 0.55,
+    // 律动周期与播放/暂停切换时的平滑收束时间。
+    cycleMs: 1_150,
+    transitionMs: 650,
+    // 整体、马尾和耳朵的完整幅度；实际值再乘用户强度。
+    bodyBobPx: 1.1,
+    bodyTiltDeg: 0.32,
+    tailRotateDeg: 0.9,
+    earRotateDeg: 0.65,
+  },
 } as const;

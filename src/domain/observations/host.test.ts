@@ -51,6 +51,7 @@ function createHost() {
         expressions: ["normal", "blink"],
         lookDirection: true,
         outfits: [],
+        mediaReaction: true,
       },
       window: true,
       timer: true,
@@ -63,6 +64,10 @@ function createHost() {
     grants: [{
       source: { kind: "plugin", id: "dev-agent-hooks" },
       eventTypes: ["dev-agent.status"],
+      maxSensitivity: "status",
+    }, {
+      source: { kind: "system", id: "windows-media-session" },
+      eventTypes: ["media.playback"],
       maxSensitivity: "status",
     }],
   });
@@ -85,6 +90,23 @@ describe("ObservationHost", () => {
   it("keeps working status as a no-op instead of inventing a noisy reaction", () => {
     const { host } = createHost();
     expect(host.ingest(devEvent("working"))).toMatchObject({ status: "ignored" });
+  });
+
+  it("maps system playback to the dedicated sustained media action", () => {
+    const { host } = createHost();
+    const result = host.ingest({
+      protocolVersion: OBSERVATION_PROTOCOL_VERSION,
+      id: "media-playing",
+      source: { kind: "system", id: "windows-media-session" },
+      type: "media.playback",
+      observedAt: 10_000,
+      sensitivity: "status",
+      payload: { state: "playing" },
+    });
+    expect(result).toMatchObject({
+      status: "scheduled",
+      action: { type: "media.react", payload: { state: "playing" } },
+    });
   });
 
   it("rejects ungranted sources and retains only redacted diagnostics", () => {

@@ -15,6 +15,7 @@ function action(type: ActionRequest["type"], id: string = type): ActionRequest {
     "timer.pause": { timerId: "t" },
     "timer.resume": { timerId: "t" },
     "timer.cancel": { timerId: "t" },
+    "media.react": { state: "stopped" },
     wait: { durationMs: 1 },
   } as const;
   return { id, type, payload: payloadByType[type], source: "agent", requestedAt: 0 } as ActionRequest;

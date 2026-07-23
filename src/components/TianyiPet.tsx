@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { cursorPosition, getCurrentWindow } from "@tauri-apps/api/window";
 import TianyiArtwork, { type PetExpression } from "./TianyiArtwork";
@@ -23,6 +23,7 @@ import { getDefaultChannel } from "../domain/scheduler/channelPolicy";
 import type { ActionRequest } from "../domain/actions/types";
 import AgentRuntimeBridge from "./AgentRuntimeBridge";
 import ObservationRuntimeBridge from "./ObservationRuntimeBridge";
+import { PET_ANIMATION_CONFIG } from "../config/petAnimation";
 
 // 天依的核心动画状态
 type PetState = "idle" | "blink" | "listen" | "speak" | "sleep" | "drag";
@@ -92,6 +93,19 @@ const TianyiPetInnerContent = ({
 
   const { scheduler, renderer } = usePetRuntime();
   const { settings, updateWindowPosition } = useSettings();
+  const musicConfig = PET_ANIMATION_CONFIG.musicReaction;
+  const musicIntensity = settings?.observation.musicReactionIntensity
+    ?? musicConfig.defaultIntensity;
+  const petStyle: PetShellStyle = {
+    cursor: state === "drag" ? "grabbing" : "grab",
+    "--music-cycle-ms": `${musicConfig.cycleMs}ms`,
+    "--music-transition-ms": `${musicConfig.transitionMs}ms`,
+    "--music-config-bob-target": `${musicConfig.bodyBobPx * musicIntensity}px`,
+    "--music-config-tilt-target": `${musicConfig.bodyTiltDeg * musicIntensity}deg`,
+    "--music-config-tail-target": `${musicConfig.tailRotateDeg * musicIntensity}deg`,
+    "--music-config-ear-target": `${musicConfig.earRotateDeg * musicIntensity}deg`,
+    "--music-config-particle-opacity": musicIntensity * 0.55,
+  };
 
   // Keep hooks as-is
   usePointerFollow(
@@ -293,9 +307,7 @@ const TianyiPetInnerContent = ({
       onMouseDown={handleMouseDown}
       onContextMenu={handleContextMenu}
       role="button"
-      style={{
-        cursor: state === "drag" ? "grabbing" : "grab",
-      }}
+      style={petStyle}
       tabIndex={0}
     >
       <TianyiArtwork
@@ -305,6 +317,10 @@ const TianyiPetInnerContent = ({
     </div>
     </>
   );
+};
+
+type PetShellStyle = CSSProperties & {
+  [K in `--${string}`]?: string | number;
 };
 
 interface TianyiPetProps {

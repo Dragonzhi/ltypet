@@ -192,6 +192,8 @@ function buildPayload(
       return { timerId: form.timerId };
     case "timer.cancel":
       return { timerId: form.timerId };
+    case "media.react":
+      return { state: "stopped" };
     case "wait":
       return { durationMs: parseFloat(form.waitDuration) };
   }
@@ -1070,7 +1072,9 @@ export default function DebugConsole(): ReactNode {
             <button className="debug-btn" type="button" onClick={() => submitObservation("dev-agent.status", "failed")}>任务失败</button>
           </div>
           <div className="debug-row">
-            <button className="debug-btn" type="button" onClick={() => submitObservation("media.playback", "playing")}>媒体播放（当前无动作）</button>
+            <button className="debug-btn" type="button" onClick={() => submitObservation("media.playback", "playing")}>模拟媒体播放</button>
+            <button className="debug-btn" type="button" onClick={() => submitObservation("media.playback", "paused")}>模拟媒体暂停</button>
+            <button className="debug-btn" type="button" onClick={() => submitObservation("media.playback", "stopped")}>模拟媒体停止</button>
           </div>
           <div className="action-meta">
             {observationResult

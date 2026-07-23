@@ -281,7 +281,7 @@ export class BehaviorScheduler {
     // Try to schedule pending agent actions on all channels
     const channels = new Set<Channel>();
     for (const p of this.pendingQueue) {
-      if (p.action.source === "agent") {
+      if (p.priority === "agent") {
         channels.add(p.channel);
       }
     }
@@ -376,7 +376,7 @@ export class BehaviorScheduler {
     } else {
       // Mutex group is free
       // Check agent pause
-      if (this.agentPaused && action.source === "agent") {
+      if (this.agentPaused && priority === "agent") {
         this.addToPending(action, channel, priority, cooldownMs);
         return;
       }
@@ -590,7 +590,7 @@ export class BehaviorScheduler {
     const next = this.pendingQueue[bestIdx];
 
     // Check agent pause
-    if (this.agentPaused && next.action.source === "agent") {
+    if (this.agentPaused && next.priority === "agent") {
       return;
     }
 

@@ -763,6 +763,31 @@ describe("能力检查", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("media.react 只接受三个播放状态并要求渲染器能力", () => {
+    const raw = {
+      protocolVersion: 1,
+      id: "media-1",
+      type: "media.react",
+      source: "system",
+      requestedAt: 1000,
+      payload: { state: "playing" },
+    };
+    expect(validateActionRequest(raw, {
+      capabilities: {
+        renderer: {
+          motions: [],
+          expressions: [],
+          lookDirection: true,
+          outfits: [],
+          mediaReaction: true,
+        },
+      },
+    }).ok).toBe(true);
+    expect(validateActionRequest({ ...raw, payload: { state: "buffering" } }).ok).toBe(false);
+    expect(validateActionRequest(raw, { capabilities: {} }))
+      .toMatchObject({ ok: false, errorCode: "unsupported_action" });
+  });
+
   it("未提供能力集时只做结构校验", () => {
     const result = validateActionRequest({
       protocolVersion: 1,

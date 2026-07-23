@@ -88,6 +88,11 @@ describe("默认通道", () => {
   it("wait 没有默认通道", () => {
     expect(getDefaultChannel("wait")).toBeUndefined();
   });
+
+  it("media.react 使用独立 ambient 通道", () => {
+    expect(getDefaultChannel("media.react")).toBe("ambient");
+    expect(shareMutexGroup("ambient", "body-motion")).toBe(false);
+  });
 });
 
 describe("抢占规则", () => {

@@ -117,6 +117,11 @@ function validateRanges(settings: PetSettings): string | null {
     || settings.observation.quietHoursEndMinute > 1_439) {
     return "observation.quietHoursEndMinute 必须是 [0, 1439] 范围内的整数";
   }
+  if (!Number.isFinite(settings.observation.musicReactionIntensity)
+    || settings.observation.musicReactionIntensity < 0
+    || settings.observation.musicReactionIntensity > 1) {
+    return "observation.musicReactionIntensity 必须在 [0, 1] 范围内";
+  }
 
   // window.x/y 可以是 NaN（未保存过位置）或有限数字
   if (!Number.isNaN(settings.window.x) && !Number.isFinite(settings.window.x)) {

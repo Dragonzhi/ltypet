@@ -472,6 +472,27 @@ export default function SettingsWindow() {
               onChange={(event) => updateObservation({ enabled: event.target.checked })}
             />
           </Row>
+          <Row label="对系统音乐作出反应">
+            <input
+              type="checkbox"
+              checked={settings.observation.systemMediaEnabled}
+              disabled={!settings.observation.enabled}
+              onChange={(event) => updateObservation({ systemMediaEnabled: event.target.checked })}
+            />
+          </Row>
+          <Row label="音乐反应强度">
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={settings.observation.musicReactionIntensity}
+              disabled={!settings.observation.enabled || !settings.observation.systemMediaEnabled}
+              onChange={(event) => updateObservation({ musicReactionIntensity: Number(event.target.value) })}
+              style={{ width: 160 }}
+            />
+            <span style={valueStyle}>{Math.round(settings.observation.musicReactionIntensity * 100)}%</span>
+          </Row>
           <Row label="保留脱敏事件诊断">
             <input
               type="checkbox"
@@ -505,7 +526,7 @@ export default function SettingsWindow() {
             </>
           )}
           <p style={hintStyle}>
-            默认关闭。事件只在本地经过校验、频率限制和调度器；诊断不保存 payload、代码、prompt 或终端输出。“立即停止所有自主行为”也会暂停外部反馈，需关闭再开启总开关后恢复。
+            默认关闭。系统音乐只读取 playing、paused、stopped，不读取标题、歌手、歌词或音频内容。事件只在本地经过校验、频率限制和调度器；诊断不保存 payload、代码、prompt 或终端输出。相同的安静时段起止时间表示全天安静。“立即停止所有自主行为”也会暂停外部反馈，需关闭再开启总开关后恢复。
           </p>
         </Section>
 

@@ -114,6 +114,11 @@ export interface WaitPayload {
   durationMs: number;
 }
 
+/** 系统媒体播放状态驱动的持续视觉反应；不包含任何媒体元数据。 */
+export interface MediaReactPayload {
+  state: "playing" | "paused" | "stopped";
+}
+
 // --- Action payload map ---
 export interface ActionPayloadMap {
   "motion.play": MotionPlayPayload;
@@ -126,6 +131,7 @@ export interface ActionPayloadMap {
   "timer.pause": TimerPausePayload;
   "timer.resume": TimerResumePayload;
   "timer.cancel": TimerCancelPayload;
+  "media.react": MediaReactPayload;
   "wait": WaitPayload;
 }
 

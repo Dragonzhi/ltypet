@@ -127,6 +127,7 @@ export class SvgCharacterRenderer implements CharacterRenderer {
       expressions: [...SUPPORTED_EXPRESSIONS],
       lookDirection: true,
       outfits: [],
+      mediaReaction: true,
     };
   }
 
@@ -201,6 +202,13 @@ export class SvgCharacterRenderer implements CharacterRenderer {
     throw new RendererError("unsupported_action", "服装系统尚未实现");
   }
 
+  setMediaReaction(state: "playing" | "paused" | "stopped"): void {
+    if (this.disposed) return;
+    const pet = this.binding.element.current;
+    if (!pet) return;
+    pet.dataset.mediaPlayback = state;
+  }
+
   reset(_reason: ResetReason): void {
     this.player?.reset();
     if (this.currentExpressionTimer !== undefined) clearTimeout(this.currentExpressionTimer);
@@ -218,6 +226,8 @@ export class SvgCharacterRenderer implements CharacterRenderer {
     this.player = null;
     if (this.currentExpressionTimer !== undefined) clearTimeout(this.currentExpressionTimer);
     if (this.motionExpressionTimer !== undefined) clearTimeout(this.motionExpressionTimer);
+    const pet = this.binding.element.current;
+    if (pet) pet.dataset.mediaPlayback = "stopped";
     this.disposed = true;
   }
 }

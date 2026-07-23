@@ -43,6 +43,7 @@ const CHANNEL_MUTEX_GROUP: Record<Channel, MutexGroup> = {
   speech: "speech",
   outfit: "body", // shares group with body-motion!
   timer: "timer",
+  ambient: "ambient",
 };
 
 /**
@@ -73,6 +74,7 @@ const DEFAULT_CHANNEL: Record<string, Channel | undefined> = {
   "timer.pause": "timer",
   "timer.resume": "timer",
   "timer.cancel": "timer",
+  "media.react": "ambient",
   // "wait" has no channel — handled internally by scheduler
 };
 

@@ -1,9 +1,11 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod chat;
+mod media;
 mod secrets;
 mod timer;
 
 use chat::{chat_cancel, chat_start, ChatManager};
+use media::{media_set_observation_enabled, MediaMonitor};
 use secrets::{migrate_legacy, secret_delete, secret_has, secret_set};
 use serde::Deserialize;
 use std::fs;
@@ -507,12 +509,14 @@ pub fn run() {
             timer_pause,
             timer_resume,
             timer_cancel,
-            timer_take_pending_finished
+            timer_take_pending_finished,
+            media_set_observation_enabled
         ])
         .setup(|app| {
             create_tray(app)?;
             app.manage(ChatManager::default());
             let app_handle = app.handle().clone();
+            app.manage(MediaMonitor::start(app_handle.clone()));
             if let Err(error) = migrate_legacy(&app_handle) {
                 eprintln!("迁移旧密钥存储失败：{error}");
             }

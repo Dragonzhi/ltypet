@@ -4,6 +4,36 @@
   padding: 0;
 }
 
+@property --music-bob-target {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --music-tilt-target {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+@property --music-tail-target {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+@property --music-ear-target {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+@property --music-particle-opacity {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
 html,
 body,
 #root {
@@ -46,6 +76,13 @@ body,
   --look-transition-ms: 110ms;
   /* 以脚底为固定点的呼吸幅度；1.003 约等于头顶起伏 1px。 */
   --breath-scale-y: 1.01;
+  --music-bob-target: 0px;
+  --music-tilt-target: 0deg;
+  --music-tail-target: 0deg;
+  --music-ear-target: 0deg;
+  --music-particle-opacity: 0;
+  --music-cycle-ms: 1150ms;
+  --music-transition-ms: 650ms;
   position: absolute;
   left: calc(50% - 100px);
   width: 200px;
@@ -54,6 +91,52 @@ body,
   -webkit-user-select: none;
   touch-action: none;
   outline: none;
+  transition:
+    --music-bob-target var(--music-transition-ms) ease-out,
+    --music-tilt-target var(--music-transition-ms) ease-out,
+    --music-tail-target var(--music-transition-ms) ease-out,
+    --music-ear-target var(--music-transition-ms) ease-out,
+    --music-particle-opacity var(--music-transition-ms) ease-out;
+}
+
+.pet-shell[data-media-playback="playing"] {
+  --music-bob-target: var(--music-config-bob-target);
+  --music-tilt-target: var(--music-config-tilt-target);
+  --music-tail-target: var(--music-config-tail-target);
+  --music-ear-target: var(--music-config-ear-target);
+  --music-particle-opacity: var(--music-config-particle-opacity);
+}
+
+.pet-shell::before,
+.pet-shell::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #62d9dc;
+  box-shadow: 8px 5px 0 -0.5px #8ddde8;
+  opacity: var(--music-particle-opacity);
+  pointer-events: none;
+  animation: pet-music-particle 2.2s linear infinite;
+}
+
+.pet-shell::before {
+  top: 88px;
+  left: 24px;
+}
+
+.pet-shell::after {
+  top: 112px;
+  right: 20px;
+  animation-delay: -1.1s;
+}
+
+.pet-music-react {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: pet-music-body var(--music-cycle-ms) ease-in-out infinite;
 }
 
 .tianyi-artwork {
@@ -106,10 +189,12 @@ body,
 
 .tianyi-artwork #hair-tail-left-motion {
   rotate: calc(var(--tail-look-rotate) + var(--tail-left-inertia-rotate));
+  animation: pet-music-tail-left var(--music-cycle-ms) ease-in-out infinite;
 }
 
 .tianyi-artwork #hair-tail-right-motion {
   rotate: calc(var(--tail-look-rotate) + var(--tail-right-inertia-rotate));
+  animation: pet-music-tail-right var(--music-cycle-ms) ease-in-out infinite;
 }
 
 .tianyi-artwork #fringe-motion {
@@ -185,6 +270,17 @@ body,
   transform-origin: center bottom;
 }
 
+.tianyi-artwork #ear-left,
+.tianyi-artwork #ear-right {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: pet-music-ear-left var(--music-cycle-ms) ease-in-out infinite;
+}
+
+.tianyi-artwork #ear-right {
+  animation-name: pet-music-ear-right;
+}
+
 .expression-blink #eye-left,
 .expression-blink #eye-right {
   transform: translate(var(--eye-x), var(--eye-y)) scaleY(0.12);
@@ -246,6 +342,75 @@ body,
   45%,
   55% {
     transform: scaleY(var(--breath-scale-y));
+  }
+}
+
+@keyframes pet-music-body {
+  0%,
+  100% {
+    transform: translateY(0) rotate(calc(-1 * var(--music-tilt-target)));
+  }
+  25% {
+    transform: translateY(calc(-1 * var(--music-bob-target))) rotate(var(--music-tilt-target));
+  }
+  50% {
+    transform: translateY(calc(-0.2 * var(--music-bob-target))) rotate(calc(-0.6 * var(--music-tilt-target)));
+  }
+  75% {
+    transform: translateY(calc(-0.72 * var(--music-bob-target))) rotate(calc(0.75 * var(--music-tilt-target)));
+  }
+}
+
+@keyframes pet-music-tail-left {
+  0%,
+  100% {
+    rotate: calc(var(--tail-look-rotate) + var(--tail-left-inertia-rotate) - var(--music-tail-target));
+  }
+  50% {
+    rotate: calc(var(--tail-look-rotate) + var(--tail-left-inertia-rotate) + var(--music-tail-target));
+  }
+}
+
+@keyframes pet-music-tail-right {
+  0%,
+  100% {
+    rotate: calc(var(--tail-look-rotate) + var(--tail-right-inertia-rotate) + var(--music-tail-target));
+  }
+  50% {
+    rotate: calc(var(--tail-look-rotate) + var(--tail-right-inertia-rotate) - var(--music-tail-target));
+  }
+}
+
+@keyframes pet-music-ear-left {
+  0%,
+  100% {
+    transform: rotate(calc(-1 * var(--music-ear-target)));
+  }
+  50% {
+    transform: rotate(var(--music-ear-target));
+  }
+}
+
+@keyframes pet-music-ear-right {
+  0%,
+  100% {
+    transform: rotate(var(--music-ear-target));
+  }
+  50% {
+    transform: rotate(calc(-1 * var(--music-ear-target)));
+  }
+}
+
+@keyframes pet-music-particle {
+  0% {
+    transform: translateY(5px) scale(0.75);
+  }
+  60% {
+    opacity: var(--music-particle-opacity);
+  }
+  100% {
+    transform: translateY(-11px) scale(1.1);
+    opacity: 0;
   }
 }
 
@@ -312,6 +477,7 @@ body,
 
 @media (prefers-reduced-motion: reduce) {
   .pet-breathe,
+  .pet-music-react,
   .pet-shell:not(.is-sleeping) :is(
       #hair-tail-left,
       #hair-tail-right,
@@ -327,6 +493,24 @@ body,
   .pet-shell:not(.is-sleeping) #arm-right-motion,
   .pet-shell:not(.is-sleeping) #tie,
   .expression-speak #mouth {
+    animation: none;
+  }
+
+  .pet-shell,
+  .pet-shell[data-media-playback="playing"] {
+    --music-bob-target: 0px;
+    --music-tilt-target: 0deg;
+    --music-tail-target: 0deg;
+    --music-ear-target: 0deg;
+    --music-particle-opacity: 0;
+  }
+
+  .pet-shell::before,
+  .pet-shell::after,
+  .tianyi-artwork #hair-tail-left-motion,
+  .tianyi-artwork #hair-tail-right-motion,
+  .tianyi-artwork #ear-left,
+  .tianyi-artwork #ear-right {
     animation: none;
   }
 

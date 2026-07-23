@@ -28,6 +28,7 @@ export interface CharacterRenderer {
   setLookDirection(x: number, y: number): void;
   setExpression(name: string, options?: ExpressionOptions): Promise<void>;
   equipOutfit(outfitId: string): Promise<void>;
+  setMediaReaction(state: "playing" | "paused" | "stopped"): void;
   reset(reason: ResetReason): void;
   dispose(): void;
 }

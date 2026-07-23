@@ -8,7 +8,7 @@
  */
 
 /** 当前设置结构版本号 */
-export const CURRENT_SCHEMA_VERSION = 5 as const;
+export const CURRENT_SCHEMA_VERSION = 6 as const;
 
 /** 窗口位置与外观状态 */
 export interface WindowSettings {
@@ -76,6 +76,8 @@ export interface ObservationSettings {
   enabled: boolean;
   /** Windows 系统音乐状态观察开关；M13-B 由媒体适配器消费。 */
   systemMediaEnabled: boolean;
+  /** 系统音乐视觉反应强度，范围 [0, 1]。 */
+  musicReactionIntensity: number;
   /** 是否在内存中保留不含 payload 的有限诊断记录。 */
   diagnosticsEnabled: boolean;
   /** 是否在每日本地时间范围内拒绝外部反馈。 */

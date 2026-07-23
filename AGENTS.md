@@ -51,6 +51,7 @@
 | `src-tauri/src/lib.rs` | Tauri Builder、全局鼠标钩子、原生命令与菜单 |
 | `src-tauri/src/timer.rs` | 可靠计时状态机、持久化、恢复与完成提醒 |
 | `src-tauri/src/chat.rs` | OpenAI-compatible HTTPS/SSE、有限重试、错误映射与取消 |
+| `src-tauri/src/media.rs` | Windows 系统媒体播放状态观察；只读取 playing/paused/stopped |
 | `src-tauri/src/secrets.rs` | Windows DPAPI 密钥存储和旧明文文件迁移 |
 | `src-tauri/tauri.conf.json` | 窗口和 bundle 配置 |
 | `src-tauri/capabilities/default.json` | 主窗口最小权限集合 |

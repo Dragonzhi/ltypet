@@ -43,6 +43,7 @@ export function createDefaultSettings(): PetSettings {
     observation: {
       enabled: false,
       systemMediaEnabled: false,
+      musicReactionIntensity: 0.55,
       diagnosticsEnabled: true,
       quietHoursEnabled: false,
       quietHoursStartMinute: 22 * 60,

@@ -58,6 +58,9 @@ class FakeRenderer {
       this.outfitRejecter = reject;
     });
   }
+  setMediaReaction(state: "playing" | "paused" | "stopped"): void {
+    this.calls.push({ method: "setMediaReaction", args: [state] });
+  }
   completeOutfit() {
     this.outfitResolver?.();
     this.outfitResolver = null;
@@ -115,7 +118,6 @@ class FakeTimerController {
       soundEnabled: true,
     };
   }
-
   async getState() { return null; }
   async start(options: TimerStartOptions) {
     this.calls.push({ method: "start", args: [options] });
@@ -510,6 +512,19 @@ describe("未实现的能力返回 rejected", () => {
     expect(result.status).toBe("rejected");
     expect(result.errorCode).toBe("unsupported_action");
     expect(result.reason).toContain("不应到达执行器");
+  });
+});
+
+describe("media.react 分发", () => {
+  it("把持续媒体状态交给渲染器且立即完成", async () => {
+    const ctx = createFixture();
+    const result = await ctx.executor.execute(
+      makeAction("media-1", "media.react", { state: "playing" }, "system"),
+      ctx.signal,
+    );
+    expect(ctx.renderer.calls).toContainEqual({ method: "setMediaReaction", args: ["playing"] });
+    expect(result).toMatchObject({ actionId: "media-1", status: "completed" });
+    ctx.executor.dispose();
   });
 });
 

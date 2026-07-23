@@ -10,10 +10,11 @@ export type Channel =
   | "gaze-expression"
   | "speech"
   | "outfit"
-  | "timer";
+  | "timer"
+  | "ambient";
 
 // --- Mutex groups: body-motion and outfit share a group; others are independent ---
-export type MutexGroup = "body" | "locomotion" | "gaze" | "speech" | "timer";
+export type MutexGroup = "body" | "locomotion" | "gaze" | "speech" | "timer" | "ambient";
 
 // --- Executor interface: schedulers call this to run actions ---
 export interface ActionExecutor {

@@ -40,6 +40,7 @@ export function PetRuntimeProvider({
     expressions: ["normal", "blink", "speak", "sleep"],
     lookDirection: true,
     outfits: [],
+    mediaReaction: true,
   });
   const capabilitiesRef = useRef(capabilities);
   capabilitiesRef.current = capabilities;

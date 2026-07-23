@@ -127,6 +127,10 @@ export class PetActionExecutor implements ActionExecutor {
           await this.withAbort(() => this.timerController!.cancel(action.payload.timerId), signal);
           return { actionId: action.id, status: "completed", finishedAt: this.clock() };
         }
+        case "media.react": {
+          this.renderer.setMediaReaction(action.payload.state);
+          return { actionId: action.id, status: "completed", finishedAt: this.clock() };
+        }
         case "speech.say":
           return { actionId: action.id, status: "rejected", errorCode: "renderer_unavailable", reason: "该能力尚未实现", finishedAt: this.clock() };
         case "wait":

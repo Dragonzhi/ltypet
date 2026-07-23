@@ -147,4 +147,16 @@ describe("isActionSupported", () => {
     };
     expect(isActionSupported(action, capabilities)).toBe(true);
   });
+
+  it("media.react 需要显式媒体反应能力", () => {
+    const action = makeRequest({ type: "media.react", payload: { state: "playing" } });
+    const renderer = {
+      motions: [] as readonly string[],
+      expressions: [] as readonly string[],
+      lookDirection: true,
+      outfits: [] as readonly string[],
+    };
+    expect(isActionSupported(action, { renderer: { ...renderer, mediaReaction: true } })).toBe(true);
+    expect(isActionSupported(action, { renderer })).toBe(false);
+  });
 });

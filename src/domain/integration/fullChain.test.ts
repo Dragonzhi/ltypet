@@ -17,7 +17,7 @@ class FakeRenderer implements CharacterRenderer {
   private motionResolvers = new Map<string, () => void>();
 
   getCapabilities(): RendererCapabilities {
-    return { motions: ["wave", "idle"], expressions: ["normal", "blink", "happy"], lookDirection: true, outfits: ["default"] };
+    return { motions: ["wave", "idle"], expressions: ["normal", "blink", "happy"], lookDirection: true, outfits: ["default"], mediaReaction: true };
   }
 
   async playMotion(name: string, options?: MotionOptions): Promise<void> {
@@ -42,6 +42,10 @@ class FakeRenderer implements CharacterRenderer {
 
   async equipOutfit(outfitId: string): Promise<void> {
     this.calls.push({ method: "equipOutfit", args: [outfitId] });
+  }
+
+  setMediaReaction(state: "playing" | "paused" | "stopped"): void {
+    this.calls.push({ method: "setMediaReaction", args: [state] });
   }
 
   reset(reason: ResetReason): void {

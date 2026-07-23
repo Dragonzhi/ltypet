@@ -587,6 +587,15 @@ describe("Agent 暂停", () => {
     expect(executor.calls[0].action.id).toBe("a1");
   });
 
+  it("暂停也约束显式使用 agent 优先级的系统观察动作", () => {
+    scheduler.pauseAgentActions();
+    const observationAction = makeAction({ id: "media", type: "media.react", source: "system" });
+    scheduler.submit(observationAction, { channel: "ambient", priority: "agent" });
+    expect(executor.calls).toHaveLength(0);
+    scheduler.resumeAgentActions();
+    expect(executor.calls).toHaveLength(1);
+  });
+
   it("暂停不影响非 agent 动作", () => {
     scheduler.pauseAgentActions();
 

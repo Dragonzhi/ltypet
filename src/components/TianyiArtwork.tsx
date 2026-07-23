@@ -88,8 +88,11 @@ const prepareArtwork = () => {
       /<svg\b/,
       '<svg class="tianyi-svg" aria-hidden="true" focusable="false"',
     )
-    .replace(/(<svg\b[^>]*>)/, '$1<g id="motion-root" class="pet-breathe">')
-    .replace(/<\/svg>\s*$/, "</g></svg>");
+    .replace(
+      /(<svg\b[^>]*>)/,
+      '$1<g id="music-react-root" class="pet-music-react"><g id="motion-root" class="pet-breathe">',
+    )
+    .replace(/<\/svg>\s*$/, "</g></g></svg>");
 
   return svg;
 };

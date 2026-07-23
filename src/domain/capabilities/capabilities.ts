@@ -5,6 +5,8 @@ export interface RendererCapabilities {
   expressions: readonly string[];
   lookDirection: boolean;
   outfits: readonly string[];
+  /** 是否支持只含 playing/paused/stopped 的持续媒体视觉反应。 */
+  mediaReaction?: boolean;
 }
 
 export interface CapabilitySet {
@@ -48,6 +50,8 @@ export function isActionSupported(
     case "timer.resume":
     case "timer.cancel":
       return capabilities.timer === true;
+    case "media.react":
+      return capabilities.renderer?.mediaReaction === true;
     case "wait":
       return true;
   }

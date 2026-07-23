@@ -27,6 +27,7 @@ const VALID_ACTION_TYPES: readonly string[] = [
   "timer.pause",
   "timer.resume",
   "timer.cancel",
+  "media.react",
   "wait",
 ];
 
@@ -259,6 +260,19 @@ function validateWait(
   return null;
 }
 
+function validateMediaReact(
+  payload: Record<string, unknown>,
+): ValidationResult | null {
+  if (
+    payload.state !== "playing" &&
+    payload.state !== "paused" &&
+    payload.state !== "stopped"
+  ) {
+    return fail("invalid_payload", "state 必须是 playing、paused 或 stopped");
+  }
+  return null;
+}
+
 function applyDefaults(type: string, payload: Record<string, unknown>): Record<string, unknown> {
   const result = { ...payload };
   if (type === "motion.play" && !("speed" in result)) {
@@ -333,6 +347,9 @@ export function validateActionRequest(
       break;
     case "timer.cancel":
       payloadError = validateTimerCancel(payload);
+      break;
+    case "media.react":
+      payloadError = validateMediaReact(payload);
       break;
     case "wait":
       payloadError = validateWait(payload);

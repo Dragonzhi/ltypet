@@ -106,6 +106,9 @@ function mergeWithDefaults(obj: Record<string, unknown>): PetSettings {
       systemMediaEnabled: typeof observation.systemMediaEnabled === "boolean"
         ? observation.systemMediaEnabled
         : defaults.observation.systemMediaEnabled,
+      musicReactionIntensity: typeof observation.musicReactionIntensity === "number"
+        ? observation.musicReactionIntensity
+        : defaults.observation.musicReactionIntensity,
       diagnosticsEnabled: typeof observation.diagnosticsEnabled === "boolean"
         ? observation.diagnosticsEnabled
         : defaults.observation.diagnosticsEnabled,
