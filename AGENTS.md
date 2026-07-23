@@ -44,6 +44,8 @@
 | `src/controllers/TauriTimerController.ts` | 前端统一番茄钟接口与原生事件适配 |
 | `src/components/ChatWindow.tsx` | 独立对话窗口、流式展示、键盘发送与取消交互 |
 | `src/domain/chat/`、`src/providers/` | Provider 契约、上下文预算、离线 Mock 与原生模型适配 |
+| `src/domain/observations/` | M13 观察事件协议、校验、授权策略、反应映射和 Host |
+| `src/components/ObservationRuntimeBridge.tsx` | 将设置、安全停止和逐来源 grant 应用到主窗口 ObservationHost |
 | `src/motion/` | 可独立测试的动画与交互数学 |
 | `src/App.css` | SVG/CSS 动画与图层样式 |
 | `src-tauri/src/lib.rs` | Tauri Builder、全局鼠标钩子、原生命令与菜单 |

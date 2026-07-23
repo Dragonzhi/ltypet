@@ -107,6 +107,17 @@ function validateRanges(settings: PetSettings): string | null {
     return "pomodoro.breakMinutes 必须是 [1, 180] 范围内的整数";
   }
 
+  if (!Number.isInteger(settings.observation.quietHoursStartMinute)
+    || settings.observation.quietHoursStartMinute < 0
+    || settings.observation.quietHoursStartMinute > 1_439) {
+    return "observation.quietHoursStartMinute 必须是 [0, 1439] 范围内的整数";
+  }
+  if (!Number.isInteger(settings.observation.quietHoursEndMinute)
+    || settings.observation.quietHoursEndMinute < 0
+    || settings.observation.quietHoursEndMinute > 1_439) {
+    return "observation.quietHoursEndMinute 必须是 [0, 1439] 范围内的整数";
+  }
+
   // window.x/y 可以是 NaN（未保存过位置）或有限数字
   if (!Number.isNaN(settings.window.x) && !Number.isFinite(settings.window.x)) {
     return "window.x 必须是有限数字或 NaN";

@@ -6,6 +6,8 @@ import { TauriWindowController } from "../controllers/TauriWindowController";
 import { TauriTimerController } from "../controllers/TauriTimerController";
 import type { RendererCapabilities } from "../domain/capabilities/capabilities";
 import type { PetExpression } from "../components/TianyiArtwork";
+import { ObservationHost } from "../domain/observations/host";
+import { OBSERVATION_LIMITS } from "../config/observation";
 
 export interface PetRuntime {
   scheduler: BehaviorScheduler;
@@ -13,6 +15,7 @@ export interface PetRuntime {
   renderer: SvgCharacterRenderer;
   windowController: TauriWindowController;
   timerController: TauriTimerController;
+  observationHost: ObservationHost;
   capabilities: RendererCapabilities;
 }
 
@@ -38,6 +41,8 @@ export function PetRuntimeProvider({
     lookDirection: true,
     outfits: [],
   });
+  const capabilitiesRef = useRef(capabilities);
+  capabilitiesRef.current = capabilities;
   const runtimeRef = useRef<PetRuntime | null>(null);
 
   if (!runtimeRef.current) {
@@ -52,12 +57,23 @@ export function PetRuntimeProvider({
     const timerController = new TauriTimerController();
     const executor = new PetActionExecutor({ renderer, windowController, timerController });
     const scheduler = new BehaviorScheduler({ executor });
+    const observationHost = new ObservationHost({
+      scheduler,
+      limits: OBSERVATION_LIMITS,
+      getCapabilities: () => ({
+        renderer: capabilitiesRef.current,
+        window: true,
+        timer: true,
+        speech: false,
+      }),
+    });
     runtimeRef.current = {
       scheduler,
       executor,
       renderer,
       windowController,
       timerController,
+      observationHost,
       capabilities,
     };
   }

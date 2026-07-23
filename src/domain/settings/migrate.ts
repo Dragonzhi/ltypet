@@ -57,6 +57,10 @@ function mergeWithDefaults(obj: Record<string, unknown>): PetSettings {
     ? obj.pomodoro as Record<string, unknown>
     : {};
 
+  const observation = typeof obj.observation === "object" && obj.observation !== null
+    ? obj.observation as Record<string, unknown>
+    : {};
+
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     window: {
@@ -96,6 +100,24 @@ function mergeWithDefaults(obj: Record<string, unknown>): PetSettings {
       breakMinutes: typeof pomodoro.breakMinutes === "number" ? pomodoro.breakMinutes : defaults.pomodoro.breakMinutes,
       showSystemReminder: typeof pomodoro.showSystemReminder === "boolean" ? pomodoro.showSystemReminder : defaults.pomodoro.showSystemReminder,
       soundEnabled: typeof pomodoro.soundEnabled === "boolean" ? pomodoro.soundEnabled : defaults.pomodoro.soundEnabled,
+    },
+    observation: {
+      enabled: typeof observation.enabled === "boolean" ? observation.enabled : defaults.observation.enabled,
+      systemMediaEnabled: typeof observation.systemMediaEnabled === "boolean"
+        ? observation.systemMediaEnabled
+        : defaults.observation.systemMediaEnabled,
+      diagnosticsEnabled: typeof observation.diagnosticsEnabled === "boolean"
+        ? observation.diagnosticsEnabled
+        : defaults.observation.diagnosticsEnabled,
+      quietHoursEnabled: typeof observation.quietHoursEnabled === "boolean"
+        ? observation.quietHoursEnabled
+        : defaults.observation.quietHoursEnabled,
+      quietHoursStartMinute: typeof observation.quietHoursStartMinute === "number"
+        ? observation.quietHoursStartMinute
+        : defaults.observation.quietHoursStartMinute,
+      quietHoursEndMinute: typeof observation.quietHoursEndMinute === "number"
+        ? observation.quietHoursEndMinute
+        : defaults.observation.quietHoursEndMinute,
     },
   };
 }

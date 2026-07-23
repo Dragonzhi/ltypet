@@ -20,6 +20,7 @@ import type {
 } from "../domain/scheduler/types";
 import type { CapabilitySet } from "../domain/capabilities/capabilities";
 import { WINDOW_MOVE_CONFIG } from "../config/windowMove";
+import { OBSERVATION_PROTOCOL_VERSION, type ObservationIngestResult } from "../domain/observations/types";
 import "../styles/DebugConsole.css";
 
 const ACTION_TYPES: ActionType[] = [
@@ -212,7 +213,7 @@ function buildRawInput(
 }
 
 export default function DebugConsole(): ReactNode {
-  const { scheduler, capabilities } = usePetRuntime();
+  const { scheduler, capabilities, observationHost } = usePetRuntime();
   const capabilitySet = useMemo<CapabilitySet>(
     () => ({
       renderer: capabilities,
@@ -239,6 +240,7 @@ export default function DebugConsole(): ReactNode {
   >([]);
   const [events, setEvents] = useState<SchedulerEvent[]>([]);
   const [agentPaused, setAgentPaused] = useState(false);
+  const [observationResult, setObservationResult] = useState<ObservationIngestResult | null>(null);
 
   useEffect(() => {
     const unsubscribe = scheduler.onEvent((event) => {
@@ -331,6 +333,22 @@ export default function DebugConsole(): ReactNode {
       scheduler.pauseAgentActions();
       setAgentPaused(true);
     }
+  };
+
+  const submitObservation = (
+    type: "dev-agent.status" | "media.playback",
+    state: string,
+  ) => {
+    const result = observationHost.ingest({
+      protocolVersion: OBSERVATION_PROTOCOL_VERSION,
+      id: `debug-observation-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      source: { kind: "system", id: "debug-console" },
+      type,
+      observedAt: Date.now(),
+      sensitivity: "status",
+      payload: { state },
+    });
+    setObservationResult(result);
   };
 
   const renderPayloadForm = () => {
@@ -1042,6 +1060,24 @@ export default function DebugConsole(): ReactNode {
               ))}
             </div>
           )}
+        </section>
+
+        <section className="debug-section">
+          <div className="debug-section-title">M13 观察事件</div>
+          <div className="debug-row">
+            <button className="debug-btn" type="button" onClick={() => submitObservation("dev-agent.status", "waiting_for_user")}>等待用户</button>
+            <button className="debug-btn" type="button" onClick={() => submitObservation("dev-agent.status", "completed")}>任务完成</button>
+            <button className="debug-btn" type="button" onClick={() => submitObservation("dev-agent.status", "failed")}>任务失败</button>
+          </div>
+          <div className="debug-row">
+            <button className="debug-btn" type="button" onClick={() => submitObservation("media.playback", "playing")}>媒体播放（当前无动作）</button>
+          </div>
+          <div className="action-meta">
+            {observationResult
+              ? `${observationResult.status} · ${observationResult.status === "rejected" ? observationResult.reason : observationResult.eventId}`
+              : "请先在设置中开启“允许外部状态触发角色反应”"}
+          </div>
+          <div className="action-meta">脱敏诊断：{observationHost.getDiagnostics().length} 条（不含 payload）</div>
         </section>
 
         {/* Event Log */}

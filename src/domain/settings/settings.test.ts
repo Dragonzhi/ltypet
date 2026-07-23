@@ -56,6 +56,18 @@ describe("settings domain", () => {
         soundEnabled: true,
       });
     });
+
+    it("外部状态反馈默认关闭且诊断记录默认启用", () => {
+      const settings = createDefaultSettings();
+      expect(settings.observation).toEqual({
+        enabled: false,
+        systemMediaEnabled: false,
+        diagnosticsEnabled: true,
+        quietHoursEnabled: false,
+        quietHoursStartMinute: 1_320,
+        quietHoursEndMinute: 480,
+      });
+    });
   });
 
   describe("parseSettings — 合法输入", () => {
@@ -239,11 +251,12 @@ describe("settings domain", () => {
         schemaVersion: 1,
         window: { x: 100, y: 200, alwaysOnTop: false },
       });
-      expect(settings.schemaVersion).toBe(4);
+      expect(settings.schemaVersion).toBe(5);
       expect(settings.window.alwaysOnTop).toBe(false);
       expect(settings.pomodoro.focusMinutes).toBe(25);
       expect(settings.agent.provider).toBe("mock");
       expect(settings.agent.maxContextChars).toBe(24_000);
+      expect(settings.observation.enabled).toBe(false);
     });
 
     it("拒绝超出范围的对话超时和重试设置", () => {
@@ -256,6 +269,15 @@ describe("settings domain", () => {
       invalidRetries.agent.maxRetries = 3;
       const retryResult = parseSettings(invalidRetries);
       expect(retryResult.ok).toBe(false);
+    });
+
+    it("拒绝越界的安静时段分钟数", () => {
+      const settings = createDefaultSettings();
+      const result = parseSettings({
+        ...settings,
+        observation: { ...settings.observation, quietHoursStartMinute: 1_440 },
+      });
+      expect(result).toMatchObject({ ok: false, code: "invalid_structure" });
     });
   });
 

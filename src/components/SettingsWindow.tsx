@@ -9,6 +9,7 @@ import type {
   AudioSettings,
   AgentSettings,
   PomodoroSettings,
+  ObservationSettings,
 } from "../domain/settings/types";
 import type { TimerKind, TimerSnapshot } from "../domain/controllers/types";
 import { TauriTimerController } from "../controllers/TauriTimerController";
@@ -137,6 +138,9 @@ export default function SettingsWindow() {
 
   const updatePomodoro = (partial: Partial<PomodoroSettings>) =>
     save({ ...settings, pomodoro: { ...settings.pomodoro, ...partial } });
+
+  const updateObservation = (partial: Partial<ObservationSettings>) =>
+    save({ ...settings, observation: { ...settings.observation, ...partial } });
 
   const runTimerCommand = async (
     command: () => Promise<TimerSnapshot>,
@@ -460,6 +464,51 @@ export default function SettingsWindow() {
           </p>
         </Section>
 
+        <Section title="外部状态反馈">
+          <Row label="允许外部状态触发角色反应">
+            <input
+              type="checkbox"
+              checked={settings.observation.enabled}
+              onChange={(event) => updateObservation({ enabled: event.target.checked })}
+            />
+          </Row>
+          <Row label="保留脱敏事件诊断">
+            <input
+              type="checkbox"
+              checked={settings.observation.diagnosticsEnabled}
+              onChange={(event) => updateObservation({ diagnosticsEnabled: event.target.checked })}
+            />
+          </Row>
+          <Row label="启用安静时段">
+            <input
+              type="checkbox"
+              checked={settings.observation.quietHoursEnabled}
+              onChange={(event) => updateObservation({ quietHoursEnabled: event.target.checked })}
+            />
+          </Row>
+          {settings.observation.quietHoursEnabled && (
+            <>
+              <Row label="安静时段开始">
+                <input
+                  type="time"
+                  value={formatMinuteOfDay(settings.observation.quietHoursStartMinute)}
+                  onChange={(event) => updateObservation({ quietHoursStartMinute: parseTimeValue(event.target.value) })}
+                />
+              </Row>
+              <Row label="安静时段结束">
+                <input
+                  type="time"
+                  value={formatMinuteOfDay(settings.observation.quietHoursEndMinute)}
+                  onChange={(event) => updateObservation({ quietHoursEndMinute: parseTimeValue(event.target.value) })}
+                />
+              </Row>
+            </>
+          )}
+          <p style={hintStyle}>
+            默认关闭。事件只在本地经过校验、频率限制和调度器；诊断不保存 payload、代码、prompt 或终端输出。“立即停止所有自主行为”也会暂停外部反馈，需关闭再开启总开关后恢复。
+          </p>
+        </Section>
+
         <Section title="行为控制">
           <button
             style={dangerBtnStyle}
@@ -507,6 +556,18 @@ function formatDuration(durationMs: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatMinuteOfDay(minute: number): string {
+  const hours = Math.floor(minute / 60);
+  const minutes = minute % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function parseTimeValue(value: string): number {
+  const [hours, minutes] = value.split(":").map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return 0;
+  return Math.min(1_439, Math.max(0, hours * 60 + minutes));
 }
 
 const containerStyle: CSSProperties = {

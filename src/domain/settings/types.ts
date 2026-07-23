@@ -8,7 +8,7 @@
  */
 
 /** 当前设置结构版本号 */
-export const CURRENT_SCHEMA_VERSION = 4 as const;
+export const CURRENT_SCHEMA_VERSION = 5 as const;
 
 /** 窗口位置与外观状态 */
 export interface WindowSettings {
@@ -70,6 +70,22 @@ export interface PomodoroSettings {
   soundEnabled: boolean;
 }
 
+/** M13 外部观察事件和主动反馈偏好。 */
+export interface ObservationSettings {
+  /** 所有系统观察和创作者插件反馈的总开关，默认关闭。 */
+  enabled: boolean;
+  /** Windows 系统音乐状态观察开关；M13-B 由媒体适配器消费。 */
+  systemMediaEnabled: boolean;
+  /** 是否在内存中保留不含 payload 的有限诊断记录。 */
+  diagnosticsEnabled: boolean;
+  /** 是否在每日本地时间范围内拒绝外部反馈。 */
+  quietHoursEnabled: boolean;
+  /** 安静时段开始，距本地午夜分钟数，范围 [0, 1439]。 */
+  quietHoursStartMinute: number;
+  /** 安静时段结束，距本地午夜分钟数，范围 [0, 1439]。 */
+  quietHoursEndMinute: number;
+}
+
 /** 完整的用户设置 */
 export interface PetSettings {
   schemaVersion: typeof CURRENT_SCHEMA_VERSION;
@@ -78,6 +94,7 @@ export interface PetSettings {
   audio: AudioSettings;
   agent: AgentSettings;
   pomodoro: PomodoroSettings;
+  observation: ObservationSettings;
 }
 
 /** 校验错误码 */

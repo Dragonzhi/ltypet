@@ -119,6 +119,7 @@ export function useSettings() {
           audio: { ...base.audio, ...partial.audio },
           agent: { ...base.agent, ...partial.agent },
           pomodoro: { ...base.pomodoro, ...partial.pomodoro },
+          observation: { ...base.observation, ...partial.observation },
         };
         storeRef.current?.saveDebounced(next);
         return next;

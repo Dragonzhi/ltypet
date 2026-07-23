@@ -22,6 +22,7 @@ import {
 import { getDefaultChannel } from "../domain/scheduler/channelPolicy";
 import type { ActionRequest } from "../domain/actions/types";
 import AgentRuntimeBridge from "./AgentRuntimeBridge";
+import ObservationRuntimeBridge from "./ObservationRuntimeBridge";
 
 // 天依的核心动画状态
 type PetState = "idle" | "blink" | "listen" | "speak" | "sleep" | "drag";
@@ -277,6 +278,7 @@ const TianyiPetInnerContent = ({
   return (
     <>
     <AgentRuntimeBridge enabled={settings?.agent.enabled ?? false} />
+    <ObservationRuntimeBridge settings={settings?.observation ?? null} />
     <div
       ref={petElement}
       aria-label="小洛宝，按回车招手，按菜单键打开菜单"

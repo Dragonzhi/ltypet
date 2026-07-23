@@ -40,5 +40,13 @@ export function createDefaultSettings(): PetSettings {
       showSystemReminder: true,
       soundEnabled: true,
     },
+    observation: {
+      enabled: false,
+      systemMediaEnabled: false,
+      diagnosticsEnabled: true,
+      quietHoursEnabled: false,
+      quietHoursStartMinute: 22 * 60,
+      quietHoursEndMinute: 8 * 60,
+    },
   };
 }
