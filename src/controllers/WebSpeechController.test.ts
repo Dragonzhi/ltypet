@@ -69,7 +69,8 @@ describe("WebSpeechController", () => {
 
     expect(fake.spoken?.voice?.voiceURI).toBe("local-zh");
     expect(levels.length).toBeGreaterThan(2);
-    expect(levels.every((level) => level >= 0 && level <= 1)).toBe(true);
+    expect(levels.every((level) => level >= 0 && level <= 0.55)).toBe(true);
+    expect(levels.some((level) => level > 0 && level < 0.3)).toBe(true);
     expect(levels[levels.length - 1]).toBe(0);
     expect(controller.getCacheStatus()).toEqual({ entries: 0, bytes: 0, policy: "none" });
   });

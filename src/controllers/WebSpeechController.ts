@@ -5,7 +5,8 @@ import type {
   SpeechSayOptions,
   SpeechVoice,
 } from "../domain/controllers/types";
-import { mouthLevelAt, speechTextSeed } from "../domain/speech/mouthEnvelope";
+import { PET_ANIMATION_CONFIG } from "../config/petAnimation";
+import { mapMouthLevel, mouthLevelAt, speechTextSeed } from "../domain/speech/mouthEnvelope";
 
 export type SpeechErrorCode =
   | "speech_disabled"
@@ -136,13 +137,19 @@ export class WebSpeechController implements SpeechController {
       utterance.onstart = () => {
         startedAt = performance.now();
         if (this.configuration.reducedMotion) {
-          options.onMouthLevel?.(0.48);
+          options.onMouthLevel?.(PET_ANIMATION_CONFIG.speechMouth.reducedMotionLevel);
           return;
         }
-        options.onMouthLevel?.(0.25);
+        const mouthConfig = PET_ANIMATION_CONFIG.speechMouth;
+        const mapLevel = (level: number) => mapMouthLevel(level, {
+          minimumOpen: mouthConfig.minimumOpen,
+          maximumOpen: mouthConfig.normalMaximum,
+          curveExponent: mouthConfig.curveExponent,
+        });
+        options.onMouthLevel?.(mapLevel(0.25));
         mouthTimer = setInterval(() => {
-          options.onMouthLevel?.(mouthLevelAt(performance.now() - startedAt, seed));
-        }, 70);
+          options.onMouthLevel?.(mapLevel(mouthLevelAt(performance.now() - startedAt, seed)));
+        }, mouthConfig.sampleIntervalMs);
       };
       utterance.onend = () => finish();
       utterance.onerror = (event) => finish(new SpeechControllerError(

@@ -57,6 +57,15 @@ body,
   --mouth-x: 0px;
   --mouth-y: 0px;
   --mouth-open-level: 0;
+  --mouth-normal-maximum: 0.55;
+  --mouth-scale-x-minimum: 0.45;
+  --mouth-scale-x-range: 0.55;
+  --mouth-scale-y-minimum: 0.2;
+  --mouth-scale-y-range: 0.8;
+  --mouth-open-opacity-multiplier: 1.8;
+  --mouth-closed-fade-multiplier: 1.35;
+  --mouth-reduced-motion-level: 0.28;
+  --mouth-transition-ms: 90ms;
   --rouge-x: 0px;
   --rouge-y: 0px;
   --head-x: 0px;
@@ -99,6 +108,7 @@ body,
   touch-action: none;
   outline: none;
   transition:
+    --mouth-open-level var(--mouth-transition-ms) ease-out,
     --music-bob-target var(--music-transition-ms) ease-out,
     --music-tilt-target var(--music-transition-ms) ease-out,
     --music-tail-target var(--music-transition-ms) ease-out,
@@ -293,13 +303,25 @@ body,
 }
 
 .pet-shell[data-speaking="true"] .tianyi-artwork #mouth-closed {
-  opacity: calc(1 - var(--mouth-open-level));
+  opacity: calc(1 - var(--mouth-open-level) * var(--mouth-closed-fade-multiplier));
 }
 
 .pet-shell[data-speaking="true"] .tianyi-artwork #mouth-open {
   display: inline !important;
-  opacity: var(--mouth-open-level);
-  transform: scaleY(calc(0.3 + 0.7 * var(--mouth-open-level)));
+  opacity: calc(var(--mouth-open-level) * var(--mouth-open-opacity-multiplier));
+  transform: scale(
+    calc(var(--mouth-scale-x-minimum) + var(--mouth-scale-x-range) * var(--mouth-open-level)),
+    calc(var(--mouth-scale-y-minimum) + var(--mouth-scale-y-range) * var(--mouth-open-level))
+  );
+}
+
+/* 像素两态嘴默认直接切层，只让尺寸平滑变化，避免半透明叠加发糊。 */
+.pet-shell[data-mouth-cross-fade="false"][data-speaking="true"] .tianyi-artwork #mouth-closed {
+  opacity: 0;
+}
+
+.pet-shell[data-mouth-cross-fade="false"][data-speaking="true"] .tianyi-artwork #mouth-open {
+  opacity: 1;
 }
 
 .tianyi-artwork #ear-left,
@@ -369,6 +391,14 @@ body,
 .expression-speak #mouth-open {
   display: inline !important;
   animation: pet-mouth-open-talk 360ms ease-in-out infinite;
+}
+
+.pet-shell[data-mouth-cross-fade="false"].expression-speak #mouth-closed {
+  opacity: 0 !important;
+}
+
+.pet-shell[data-mouth-cross-fade="false"].expression-speak #mouth-open {
+  opacity: 1 !important;
 }
 
 @keyframes pet-breathe {
@@ -508,7 +538,7 @@ body,
     opacity: 1;
   }
   50% {
-    opacity: 0;
+    opacity: calc(1 - var(--mouth-normal-maximum) * var(--mouth-closed-fade-multiplier));
   }
 }
 
@@ -516,11 +546,14 @@ body,
   0%,
   100% {
     opacity: 0;
-    transform: scaleY(0.3);
+    transform: scale(var(--mouth-scale-x-minimum), var(--mouth-scale-y-minimum));
   }
   50% {
-    opacity: 1;
-    transform: scaleY(1);
+    opacity: calc(var(--mouth-normal-maximum) * var(--mouth-open-opacity-multiplier));
+    transform: scale(
+      calc(var(--mouth-scale-x-minimum) + var(--mouth-scale-x-range) * var(--mouth-normal-maximum)),
+      calc(var(--mouth-scale-y-minimum) + var(--mouth-scale-y-range) * var(--mouth-normal-maximum))
+    );
   }
 }
 
@@ -547,13 +580,16 @@ body,
   }
 
   .expression-speak #mouth-closed {
-    opacity: 0.52;
+    opacity: calc(1 - var(--mouth-reduced-motion-level) * var(--mouth-closed-fade-multiplier));
   }
 
   .expression-speak #mouth-open {
     display: inline !important;
-    opacity: 0.48;
-    transform: scaleY(0.62);
+    opacity: calc(var(--mouth-reduced-motion-level) * var(--mouth-open-opacity-multiplier));
+    transform: scale(
+      calc(var(--mouth-scale-x-minimum) + var(--mouth-scale-x-range) * var(--mouth-reduced-motion-level)),
+      calc(var(--mouth-scale-y-minimum) + var(--mouth-scale-y-range) * var(--mouth-reduced-motion-level))
+    );
   }
 
   .pet-shell,

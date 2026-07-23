@@ -99,6 +99,29 @@ export const PET_ANIMATION_CONFIG = {
     maxLiftPx: 0.25,
     maxRotateDeg: 3,
   },
+  /** M14 两态口型。SVG 中的 mouth_open 始终按“最大张嘴素材”处理。 */
+  speechMouth: {
+    // Web Speech 没有音素/波形数据，普通模拟朗读只在该范围内活动，避免每个音节都像大喊。
+    minimumOpen: 0.08,
+    normalMaximum: 0.55,
+    // 为未来带 viseme/音频包络的 Provider 保留；当前 Web Speech 模拟不会主动达到这个值。
+    emphasisMaximum: 0.72,
+    // 大于 1 会压低中等输入，让轻微开口出现得更多，峰值出现得更少。
+    curveExponent: 1.7,
+    // 系统“减少动态效果”开启时使用固定开口，不快速循环张合。
+    reducedMotionLevel: 0.28,
+    // Web Speech 模拟包络采样间隔，以及 CSS 对每次开口变化的补间时长。
+    sampleIntervalMs: 70,
+    smoothingMs: 90,
+    // 最大嘴素材在轻微开口时的横向/纵向缩放下限；普通朗读不会保持素材原始宽度。
+    scaleXMinimum: 0.45,
+    scaleYMinimum: 0.2,
+    // 是否在闭嘴/开嘴层之间做透明度交叉淡入；像素两态嘴默认关闭，只补间尺寸。
+    crossFadeEnabled: false,
+    // 仅 crossFadeEnabled=true 时生效：开嘴淡入、闭嘴淡出的倍率。
+    openOpacityMultiplier: 1.8,
+    closedFadeMultiplier: 1.35,
+  },
   /** M13-B 系统音乐状态驱动的低打扰视觉反应。 */
   musicReaction: {
     // 设置页默认强度；0 完全关闭视觉幅度，1 使用以下完整幅度。

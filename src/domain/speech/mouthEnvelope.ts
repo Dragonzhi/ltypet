@@ -13,6 +13,27 @@ export function mouthLevelAt(elapsedMs: number, textSeed: number): number {
   return clamp(0.16 + pulse * variation, 0, 1);
 }
 
+export interface MouthLevelMapping {
+  minimumOpen: number;
+  maximumOpen: number;
+  curveExponent: number;
+}
+
+/** 把 0..1 的节奏输入压缩到自然说话范围；0 始终保持完全闭嘴。 */
+export function mapMouthLevel(
+  value: number,
+  mapping: MouthLevelMapping,
+): number {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  const minimum = clamp(mapping.minimumOpen, 0, 1);
+  const maximum = clamp(mapping.maximumOpen, minimum, 1);
+  const exponent = Number.isFinite(mapping.curveExponent)
+    ? Math.max(1, mapping.curveExponent)
+    : 1;
+  const curved = clamp(value, 0, 1) ** exponent;
+  return minimum + curved * (maximum - minimum);
+}
+
 export function speechTextSeed(text: string): number {
   let hash = 2166136261;
   for (const character of text) {

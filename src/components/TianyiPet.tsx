@@ -95,6 +95,7 @@ const TianyiPetInnerContent = ({
   const { scheduler, renderer, speechController } = usePetRuntime();
   const { settings, updateWindowPosition } = useSettings();
   const musicConfig = PET_ANIMATION_CONFIG.musicReaction;
+  const mouthConfig = PET_ANIMATION_CONFIG.speechMouth;
   const musicIntensity = settings?.observation.musicReactionIntensity
     ?? musicConfig.defaultIntensity;
   const petStyle: PetShellStyle = {
@@ -106,6 +107,15 @@ const TianyiPetInnerContent = ({
     "--music-config-tail-target": `${musicConfig.tailRotateDeg * musicIntensity}deg`,
     "--music-config-ear-target": `${musicConfig.earRotateDeg * musicIntensity}deg`,
     "--music-config-particle-opacity": musicIntensity * 0.55,
+    "--mouth-normal-maximum": mouthConfig.normalMaximum,
+    "--mouth-scale-x-minimum": mouthConfig.scaleXMinimum,
+    "--mouth-scale-x-range": 1 - mouthConfig.scaleXMinimum,
+    "--mouth-scale-y-minimum": mouthConfig.scaleYMinimum,
+    "--mouth-scale-y-range": 1 - mouthConfig.scaleYMinimum,
+    "--mouth-open-opacity-multiplier": mouthConfig.openOpacityMultiplier,
+    "--mouth-closed-fade-multiplier": mouthConfig.closedFadeMultiplier,
+    "--mouth-reduced-motion-level": mouthConfig.reducedMotionLevel,
+    "--mouth-transition-ms": `${mouthConfig.smoothingMs}ms`,
   };
 
   // Keep hooks as-is
@@ -310,6 +320,7 @@ const TianyiPetInnerContent = ({
       ref={petElement}
       aria-label="小洛宝，按回车招手，按菜单键打开菜单"
       className={`pet-shell${state === "sleep" ? " is-sleeping" : ""}`}
+      data-mouth-cross-fade={mouthConfig.crossFadeEnabled ? "true" : "false"}
       data-suppress-breathing={suppressedChannels.has("breathing") || undefined}
       data-suppress-blinking={suppressedChannels.has("blinking") || undefined}
       data-suppress-pointer-follow={suppressedChannels.has("pointer-follow") || undefined}
