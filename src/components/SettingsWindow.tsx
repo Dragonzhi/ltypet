@@ -20,8 +20,10 @@ import { createDefaultSettings } from "../domain/settings/defaults";
 import { deleteApiKey, hasApiKey, setApiKey } from "../controllers/SecureKeyStore";
 import PluginSettingsPanel from "./PluginSettingsPanel";
 import MemorySettingsPanel from "./MemorySettingsPanel";
+import "../styles/SettingsWindow.css";
 
 export default function SettingsWindow() {
+  const [activePage, setActivePage] = useState<SettingsPageId>("window");
   const [settings, setSettings] = useState<PetSettings | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [timer, setTimer] = useState<TimerSnapshot | null>(null);
@@ -239,6 +241,58 @@ export default function SettingsWindow() {
       </header>
 
       <main style={mainStyle}>
+        <nav style={pageNavStyle} aria-label="设置分页">
+          <div style={pageTabsStyle} role="tablist" aria-label="设置分类">
+            {settingsPages.map((page) => (
+              <div
+                key={page.id}
+                role="tab"
+                aria-selected={activePage === page.id}
+                aria-controls={`settings-page-${page.id}`}
+                tabIndex={activePage === page.id ? 0 : -1}
+                className="settings-page-tab"
+                style={activePage === page.id ? activePageTabStyle : pageTabStyle}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  if (document.activeElement instanceof HTMLElement) {
+                    document.activeElement.blur();
+                  }
+                }}
+                onClick={() => setActivePage(page.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setActivePage(page.id);
+                  }
+                  if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+                    event.preventDefault();
+                    setActivePage(nextPage(activePage, 1));
+                  }
+                  if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+                    event.preventDefault();
+                    setActivePage(nextPage(activePage, -1));
+                  }
+                }}
+              >
+                <span>{page.label}</span>
+              </div>
+            ))}
+          </div>
+        </nav>
+
+        <div
+          id={`settings-page-${activePage}`}
+          role="tabpanel"
+          aria-label={settingsPages[currentPageIndex(activePage)].label}
+          style={pageContentStyle}
+        >
+        <div style={pageHeadingStyle}>
+          <div>
+            <h2 style={pageHeadingTitleStyle}>{settingsPages[currentPageIndex(activePage)].label}</h2>
+            <p style={pageHeadingDescriptionStyle}>{settingsPages[currentPageIndex(activePage)].description}</p>
+          </div>
+        </div>
+        {activePage === "window" && <>
         <Section title="窗口">
           <Row label="始终置顶">
             <input
@@ -256,6 +310,9 @@ export default function SettingsWindow() {
           </Row>
         </Section>
 
+        </>}
+
+        {activePage === "animation" && <>
         <Section title="动画">
           <Row label="动作强度">
             <input
@@ -274,7 +331,9 @@ export default function SettingsWindow() {
             </span>
           </Row>
         </Section>
+        </>}
 
+        {activePage === "audio" && <>
         <Section title="声音">
           <Row label="启用声音">
             <input
@@ -300,6 +359,9 @@ export default function SettingsWindow() {
           </Row>
         </Section>
 
+        </>}
+
+        {activePage === "speech" && <>
         <Section title="本机语音与口型">
           <Row label="启用语音朗读">
             <input
@@ -383,6 +445,9 @@ export default function SettingsWindow() {
           </p>
         </Section>
 
+        </>}
+
+        {activePage === "pomodoro" && <>
         <Section title="番茄钟">
           <Row label="专注时长（分钟）">
             <input
@@ -443,7 +508,9 @@ export default function SettingsWindow() {
           {timerError && <div style={warnStyle}>{timerError}</div>}
           <p style={hintStyle}>关闭设置窗口或重启桌宠不会丢失正在进行或暂停的计时。</p>
         </Section>
+        </>}
 
+        {activePage === "chat" && <>
         <Section title="对话与 Agent">
           <Row label="对话 Provider">
             <select
@@ -562,7 +629,11 @@ export default function SettingsWindow() {
             <button type="button" style={btnStyle} onClick={() => void invoke("open_chat")}>打开对话窗口</button>
           </div>
           <p style={hintStyle}>离线 Mock 不联网；对话记录只保留在当前窗口内存中。</p>
-          <div style={{ height: 8 }} />
+        </Section>
+        </>}
+
+        {activePage === "agent" && <>
+        <Section title="Agent 能力">
           <Row label="启用 Agent">
             <input
               type="checkbox"
@@ -574,7 +645,9 @@ export default function SettingsWindow() {
             开启后，模型只能调用版本化白名单语义工具；窗口移动与取消计时仍需逐次确认。不会获得 shell、文件、进程、任意网络或 DOM 权限。
           </p>
         </Section>
+        </>}
 
+        {activePage === "observation" && <>
         <Section title="外部状态反馈">
           <Row label="允许外部状态触发角色反应">
             <input
@@ -640,15 +713,21 @@ export default function SettingsWindow() {
             默认关闭。系统音乐只读取 playing、paused、stopped，不读取标题、歌手、歌词或音频内容。事件只在本地经过校验、频率限制和调度器；诊断不保存 payload、代码、prompt 或终端输出。相同的安静时段起止时间表示全天安静。“立即停止所有自主行为”也会暂停外部反馈，需关闭再开启总开关后恢复。
           </p>
         </Section>
+        </>}
 
+        {activePage === "plugins" && <>
         <Section title="创作者插件">
           <PluginSettingsPanel observationEnabled={settings.observation.enabled} />
         </Section>
+        </>}
 
+        {activePage === "memory" && <>
         <Section title="长期记忆与羁绊">
           <MemorySettingsPanel settings={settings.memory} onChange={updateMemory} />
         </Section>
+        </>}
 
+        {activePage === "observation" && <>
         <Section title="行为控制">
           <button
             style={dangerBtnStyle}
@@ -659,6 +738,8 @@ export default function SettingsWindow() {
             立即停止所有自主行为
           </button>
         </Section>
+        </>}
+        </div>
       </main>
 
       <footer style={footerStyle}>
@@ -689,6 +770,41 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       {children}
     </label>
   );
+}
+
+type SettingsPageId =
+  | "window"
+  | "animation"
+  | "audio"
+  | "speech"
+  | "pomodoro"
+  | "chat"
+  | "agent"
+  | "observation"
+  | "plugins"
+  | "memory";
+
+const settingsPages: Array<{ id: SettingsPageId; label: string; description: string }> = [
+  { id: "window", label: "窗口", description: "位置与层级" },
+  { id: "animation", label: "动画", description: "动作强度" },
+  { id: "audio", label: "声音", description: "音量与提示" },
+  { id: "speech", label: "语音", description: "朗读与口型" },
+  { id: "pomodoro", label: "番茄钟", description: "专注与休息" },
+  { id: "chat", label: "对话", description: "模型连接" },
+  { id: "agent", label: "Agent", description: "行为权限" },
+  { id: "observation", label: "外部反馈", description: "音乐与时段" },
+  { id: "plugins", label: "插件", description: "创作者扩展" },
+  { id: "memory", label: "记忆", description: "羁绊与数据" },
+];
+
+function currentPageIndex(page: SettingsPageId): number {
+  return settingsPages.findIndex((item) => item.id === page);
+}
+
+function nextPage(page: SettingsPageId, direction: 1 | -1): SettingsPageId {
+  const index = currentPageIndex(page);
+  const nextIndex = Math.min(settingsPages.length - 1, Math.max(0, index + direction));
+  return settingsPages[nextIndex].id;
 }
 
 function formatDuration(durationMs: number): string {
@@ -729,12 +845,83 @@ const headerStyle: CSSProperties = {
 const mainStyle: CSSProperties = {
   flex: 1,
   overflowY: "auto",
-  padding: "8px 20px",
+  padding: "0 24px 24px",
+};
+
+const pageNavStyle: CSSProperties = {
+  position: "sticky",
+  top: 0,
+  zIndex: 2,
+  margin: "0 -24px",
+  padding: "14px 24px",
+  background: "rgba(250, 250, 250, 0.96)",
+  borderBottom: "1px solid #e5e7eb",
+  backdropFilter: "blur(12px)",
+};
+
+const pageTabsStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+  gap: 8,
+};
+
+const pageTabStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 7,
+  minHeight: 40,
+  padding: "7px 9px",
+  border: "1px solid #e5e7eb",
+  borderRadius: 10,
+  background: "#fff",
+  color: "#64748b",
+  cursor: "pointer",
+  fontSize: 12,
+  fontWeight: 600,
+  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.03)",
+};
+
+const activePageTabStyle: CSSProperties = {
+  ...pageTabStyle,
+  borderColor: "#5eead4",
+  background: "linear-gradient(135deg, #f0fdfa 0%, #ecfeff 100%)",
+  color: "#0f766e",
+  boxShadow: "0 4px 12px rgba(13, 148, 136, 0.12)",
+};
+
+const pageContentStyle: CSSProperties = {
+  minWidth: 0,
+  padding: "22px 0 8px",
+};
+
+const pageHeadingStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  marginBottom: 14,
+};
+
+const pageHeadingTitleStyle: CSSProperties = {
+  margin: 0,
+  color: "#1e293b",
+  fontSize: 18,
+  fontWeight: 700,
+};
+
+const pageHeadingDescriptionStyle: CSSProperties = {
+  margin: "3px 0 0",
+  color: "#94a3b8",
+  fontSize: 12,
 };
 
 const sectionStyle: CSSProperties = {
-  padding: "12px 0",
-  borderBottom: "1px solid #eee",
+  marginBottom: 12,
+  padding: "16px 18px",
+  border: "1px solid #e5e7eb",
+  borderRadius: 14,
+  background: "#fff",
+  boxShadow: "0 6px 20px rgba(15, 23, 42, 0.045)",
 };
 
 const sectionTitleStyle: CSSProperties = {
@@ -742,8 +929,8 @@ const sectionTitleStyle: CSSProperties = {
   fontWeight: 700,
   textTransform: "uppercase",
   letterSpacing: 0.8,
-  color: "#888",
-  margin: "0 0 8px",
+  color: "#64748b",
+  margin: "0 0 10px",
 };
 
 const rowStyle: CSSProperties = {
